@@ -5,7 +5,7 @@ from langchain_ollama import ChatOllama
 
 from noshow.facts import FREE_CANCEL_DAYS, as_note
 
-MODEL = os.getenv("DRAFT_MODEL", "gemma4:e2b")
+MODEL = os.getenv("DRAFT_MODEL", "gemma4:e2b-it-qat")   # 4.3 GB build that fits an 8 GB Mac
 
 SYSTEM = ("You write one short text message from a small motel to a guest who has an upcoming booking. "
           "Friendly and plain, under 60 words, no emojis. Mention the arrival and departure dates, the "
@@ -30,5 +30,5 @@ def raw_brief(b: dict) -> str:
 
 
 def write_draft(brief: str, model: str = MODEL, temperature: float = 0.7, seed: int | None = None) -> str:
-    llm = ChatOllama(model=model, temperature=temperature, seed=seed)
+    llm = ChatOllama(model=model, temperature=temperature, seed=seed, num_ctx=2048)  # short context keeps it inside 8 GB
     return llm.invoke([("system", SYSTEM), ("human", brief)]).content.strip()

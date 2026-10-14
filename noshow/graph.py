@@ -9,13 +9,14 @@ from noshow.check import check_draft
 from noshow.draft import facts_brief, write_draft
 from noshow.facts import work_out_facts
 
-RISK_LINE = 0.5   # above this, the owner gets a draft to approve
+RISK_LINE = 0.5   # used only when the morning run has not ranked the bookings itself
 MAX_DRAFTS = 2    # one redraft if the check finds a wrong fact, then the owner sees it flagged
 
 
 class Desk(TypedDict, total=False):
     booking: dict
     risk: float
+    flagged: bool        # set by the morning run: among the day's riskiest
     facts: dict
     draft: str
     problems: list[str]
@@ -44,7 +45,7 @@ def build(writer: Callable[[str], str] = write_draft, checkpointer=None):
         return {"decision": answer, "final": s["draft"] if answer == "approve" else ""}
 
     def triage(s: Desk) -> str:
-        return "facts" if s["risk"] >= RISK_LINE else END
+        return "facts" if s.get("flagged", s["risk"] >= RISK_LINE) else END
 
     def after_check(s: Desk) -> str:
         return "approve" if not s["problems"] or s["attempts"] >= MAX_DRAFTS else "draft"

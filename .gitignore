@@ -8,3 +8,4 @@ data/raw/
 .DS_Store
 # personal learning scripts, kept local
 learn/
+results/.*.log

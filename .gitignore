@@ -9,3 +9,5 @@ data/
 # personal learning scripts, kept local
 learn/
 results/.*.log
+.impeccable/
+PRODUCT.md

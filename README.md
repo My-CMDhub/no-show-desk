@@ -22,7 +22,7 @@ ollama pull gemma4:e2b-it-qat
 
 - Real: the 2017 bookings, TabPFN's scores, the reasons, Gemma's drafts and the checks.
 - Demo: the motel lives on a fixed day in 2017 (the data ends there); guest names, phone numbers (Australia's fiction range) and emails (`example.com`) are made up; **Send** writes to `data/outbox.jsonl` and the page marks it "demo: not delivered".
-- The 30% line and the "about 3.7 rooms a morning" figure come from 30 test mornings on past bookings (`results/thresholds.md`), not a live motel.
+- The 30% line and the "about 3.7 flagged guests a morning who did cancel" figure (random picks: about 2.1) come from 30 test mornings on past bookings (`results/thresholds.md`), not a live motel.
 
 ## Honest limits
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from noshow import bot, desk
@@ -30,6 +31,7 @@ async def lifespan(api: FastAPI):
 
 
 api = FastAPI(lifespan=lifespan)
+api.mount("/fonts", StaticFiles(directory=PAGE.with_name("fonts")), name="fonts")   # Overpass, SIL OFL (fonts/OFL.txt)
 
 
 class Edit(BaseModel):

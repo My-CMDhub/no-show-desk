@@ -112,3 +112,9 @@ def test_a_reason_every_flagged_guest_shares_is_said_once():
               {"flagged": False, "reasons": [room]}]
     assert desk.shared_reasons(guests) == [agent]
     assert desk.shared_reasons(guests[:1]) == []   # one guest has nothing to share with
+
+
+def test_the_page_font_ships_with_the_app(client):
+    r = client.get("/fonts/overpass-latin.woff2")
+    assert r.status_code == 200 and r.content[:4] == b"wOF2"
+    assert "fonts.googleapis.com" not in client.get("/").text

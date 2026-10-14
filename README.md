@@ -24,6 +24,13 @@ ollama pull gemma4:e2b-it-qat
 - Demo: the motel lives on a fixed day in 2017 (the data ends there); guest names, phone numbers (Australia's fiction range) and emails (`example.com`) are made up; **Send** writes to `data/outbox.jsonl` and the page marks it "demo: not delivered".
 - The 30% line and the "about 3.7 rooms a morning" figure come from 30 test mornings on past bookings (`results/thresholds.md`), not a live motel.
 
+## Honest limits
+
+- **Scoring leaves the computer.** TabPFN runs through Prior Labs' API, so booking details (not names: the data has none) are sent to their servers for scoring. Its key comes with a free non-commercial licence; a paid version needs Prior Labs' commercial terms or TabPFN's open weights running locally. Gemma already runs on this computer.
+- **The Telegram link opens on this computer only.** The page listens on `localhost`, so the morning message's link doesn't open on a phone yet.
+- **Reasons explain the group, not the order.** Guests who share a profile show the same reasons; the ranking within them is TabPFN weighing everything together.
+- **Sending is a mock**, and the money is the hotels' own prices shown as dollars.
+
 Data: [Hotel booking demand](https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand) (Antonio, Almeida & Nunes, *Data in Brief* 22, 2019; CC BY 4.0). Two Portuguese hotels, not motels.
 
 Work in progress for the DEV Hacktoberfest 2026 "Side Hustle" challenge.

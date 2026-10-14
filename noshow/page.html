@@ -44,7 +44,7 @@
   /* top line */
   .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 0; color: var(--muted); }
   .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 800; letter-spacing: .01em; }
-  .brand i { width: 10px; height: 10px; border-radius: 3px; background: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-soft); }
+  .brand i { width: 10px; height: 10px; border-radius: 3px; background: var(--lamp); }
   .demo { padding: 1px 8px; border: 1px solid var(--rule-strong); border-radius: 99px; white-space: nowrap; }
 
   /* headline */
@@ -76,12 +76,13 @@
   .lamp { display: inline-grid; place-items: center; height: 30px; border-radius: 6px; font-weight: 800;
           border: 1px solid var(--rule-strong); color: var(--muted); }
   .lit .lamp { background: var(--lamp); border-color: var(--lamp); color: var(--lamp-ink);
-               box-shadow: 0 1px 1px rgba(0,0,0,.08), 0 0 0 3px var(--lamp-soft); }
+               box-shadow: 0 1px 2px rgba(0,0,0,.12); transition: background-color .4s var(--ease), color .4s var(--ease); }
   .done .lamp { border-style: dashed; }
   .who b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .who > span { color: var(--muted); }
-  .who em { font-style: normal; font-weight: 600; color: var(--ink); }
-  .who em.st-sent { color: var(--ok); }
+  .r em { font-style: normal; font-weight: 400; color: var(--muted); }
+  .r em.st-ready, .r em.st-risk { font-weight: 600; color: var(--ink); }
+  .r em.st-sent { font-weight: 600; color: var(--ok); }
   .done .who b { color: var(--muted); }
   .amt { text-align: right; font-weight: 600; }
   .col { display: none; color: var(--ink); }
@@ -100,7 +101,7 @@
   .cells { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; border-bottom: 1px solid var(--rule); }
   .cells div { padding: 12px 14px; }
   .cells div + div { border-left: 1px solid var(--rule); }
-  .cells dt { color: var(--muted); }
+  .cells dt { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
   .cells dd { margin: 0; font-weight: 600; }
   .sec { padding: 14px; border-bottom: 1px solid var(--rule); }
   .sec:last-child { border-bottom: 0; }
@@ -111,7 +112,10 @@
   .more summary { color: var(--muted); }
   .more ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
   .more li + li { margin-top: 4px; }
-  .contact { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .common { margin: 14px 4px 4px; color: var(--muted); max-width: 70ch; }
+  .common b { color: var(--ink); font-weight: 600; }
+  .daybreak { padding: 18px 4px 6px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 12px;
+              border-bottom: 1px solid var(--rule-strong); }
   .note { color: var(--muted); }
   .hint { margin-top: 10px !important; }
 
@@ -132,7 +136,8 @@
   .bar { height: 3px; border-radius: 2px; background: var(--rule); overflow: hidden; margin: 6px 0 10px; }
   .bar i { display: block; height: 100%; width: 4%; background: var(--ink); animation: grow 34s var(--ease) forwards; }
   @keyframes grow { to { width: 94%; } }
-  .sent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--ok); font-weight: 600; }
+  .sent { display: flex; gap: 8px; align-items: flex-start; color: var(--ok); font-weight: 600; }
+  .sent .tag { display: inline-block; margin-top: 4px; }
   .tag { font-weight: 400; color: var(--muted); border: 1px dashed var(--rule-strong); border-radius: 99px; padding: 0 8px; }
   blockquote { margin: 10px 0 0; padding: 10px 12px; background: var(--panel); border-radius: 8px; color: var(--muted); }
   .err { color: var(--warn); margin-top: 8px !important; }
@@ -162,7 +167,9 @@
     .head { grid-template-columns: 64px minmax(0, 1.3fr) 110px minmax(0, 1fr) 100px 18px; }
     .col { display: block; }
     .cols { display: grid; grid-template-columns: 64px minmax(0, 1.3fr) 110px minmax(0, 1fr) 100px 18px; gap: 14px;
-            padding: 12px 4px 8px; color: var(--muted); border-bottom: 1px solid var(--rule); }
+            padding: 12px 4px 8px; color: var(--muted); border-bottom: 1px solid var(--rule);
+            text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 600; }
+    .who em, .who .when .sep:last-child { display: none; }
     .cols span:nth-child(5) { text-align: right; }
     .who .when { display: none; }
   }
@@ -204,25 +211,26 @@ const ICON = {
 };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
-const pct = (x) => Math.round(x * 100) + "%";
+const pct = (x) => Math.floor(x * 100 + 1e-9) + "%";   // never round a risk up past the line it was flagged on
 const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const day = (iso, opts = {weekday: "short", day: "numeric", month: "short"}) => {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-AU", opts).replace(",", "");
 };
-const PAGE = 10;
+const PAGE = 10, UNDO_MS = 5000;
 const SEP = '<span class="sep" aria-hidden="true"></span>';
-const channel = (via) => { const v = String(via || "").replace(/^(an?|the) /, ""); return v[0].toUpperCase() + v.slice(1); };
-const how = (c) => c === "email" ? "Email" : c;
-let data = null, open = null, busy = {}, errors = {};
+const wide = () => matchMedia("(min-width: 720px)").matches;
+let data = null, open = null, busy = {}, errors = {}, edits = {}, needYes = {}, pending = {};
 let ui = {tab: "today", filter: "all", query: "", page: 0};
 try { Object.assign(ui, JSON.parse(sessionStorage.getItem("ui") || "{}")); } catch {}
 const keep = () => { try { sessionStorage.setItem("ui", JSON.stringify(ui)); } catch {} };
 const flagged = () => data.guests.filter((g) => g.flagged);
-const firstOpen = () => flagged().find((g) => !g.outcome);
+const firstOpen = () => flagged().find((g) => !g.outcome && !pending[g.id]);
+const sharedLabels = () => new Set((data.shared || []).map((r) => r.label));
 
 function status(g) {
+  if (pending[g.id]) return pending[g.id].action === "leave" ? "Left" : "Draft rejected";
   if (g.outcome === "sent") return "Sent";
   if (g.outcome === "left") return "Left";
   if (g.outcome === "rejected") return "Draft rejected";
@@ -230,17 +238,23 @@ function status(g) {
   if (g.flagged) return "Might not show";
   return g.booking.due === false ? "Later" : "Expected";
 }
+const tone = (st) => ({"Sent": "st-sent", "Draft ready": "st-ready", "Might not show": "st-risk"}[st] || "");
 
 async function load() {
   const r = await fetch("/api/day");
   data = await r.json();
-  if (open === null && data.guests.length) open = firstOpen()?.id ?? null;
+  if (open === null && data.guests.length && wide()) open = firstOpen()?.id ?? null;   // phones start with the whole list
   render();
 }
 
-async function act(id, action) {
-  const el = document.getElementById("t-" + id);
-  const body = action === "send" ? JSON.stringify({text: el ? el.value : null}) : undefined;
+function advance() {   // after a decision, unfold the next guest who still needs one
+  const next = firstOpen()?.id ?? null;
+  open = null; render();
+  if (next && ui.tab === "today") requestAnimationFrame(() => requestAnimationFrame(() => toggle(next)));
+}
+
+async function act(id, action, opts = {}) {
+  const body = action === "send" ? JSON.stringify({text: edits[id] ?? data.guests.find((g) => g.id === id).draft, anyway: !!opts.anyway}) : undefined;
   busy[id] = action; delete errors[id]; render();
   try {
     const r = await fetch(`/api/guests/${encodeURIComponent(id)}/${action}`,
@@ -248,26 +262,50 @@ async function act(id, action) {
     if (r.ok) {
       const g = await r.json();
       data.guests = data.guests.map((x) => x.id === id ? g : x);
-      if (["left", "rejected"].includes(g.outcome) && ui.tab === "today") open = firstOpen()?.id ?? null;   // move on
+      delete needYes[id];
+      if (g.outcome === "sent") delete edits[id];
+    } else if (r.status === 422) {
+      needYes[id] = (await r.json()).detail.problems;
     } else if (r.status === 409) { await load(); errors[id] = "Already decided on another screen. This is where it stands now."; }
     else errors[id] = action === "draft" ? "The draft didn't finish. Check that Ollama is running, then try again." : "That didn't go through. Try again.";
   } catch { errors[id] = "Lost contact with the desk. Is it still running?"; }
-  delete busy[id]; render();
+  delete busy[id];
+  const done = data.guests.find((g) => g.id === id)?.outcome;
+  if (done && done !== "sent" && ui.tab === "today") advance(); else render();
 }
+
+function soon(id, action) {   // Leave and Reject wait a few seconds so a mis-tap can be undone
+  pending[id] = {action, timer: setTimeout(() => { delete pending[id]; act(id, action); }, UNDO_MS)};
+  render();
+}
+function undo(id) { clearTimeout(pending[id]?.timer); delete pending[id]; render(); }
 
 async function runMorning(btn) {
   btn.disabled = true; btn.textContent = "Checking guests…";
   const r = await fetch("/api/morning", {method: "POST"});
-  if (r.ok) { data = await r.json(); open = firstOpen()?.id ?? null; render(); return; }
+  if (r.ok) { data = await r.json(); open = wide() ? firstOpen()?.id ?? null : null; render(); return; }
   btn.disabled = false; btn.textContent = "Check this morning's guests";
   $("#morning-err").textContent = "The check didn't finish. Risk is scored online, so check the internet connection and try again.";
 }
 
-function toggle(id) { open = open === id ? null : id; renderBoard(); }
-function tab(t) { if (t !== ui.tab) open = t === "today" ? firstOpen()?.id ?? null : null; ui.tab = t; ui.page = 0; keep(); render(); }
+function toggle(id) {   // unfold in place: classes only, so the pass animates and the owner's edits stay put
+  const prev = open;
+  open = open === id ? null : id;
+  for (const x of new Set([prev, open])) {
+    const li = x && document.getElementById(x);
+    if (!li) continue;
+    li.classList.toggle("open", x === open);
+    li.querySelector(".head").setAttribute("aria-expanded", String(x === open));
+    li.querySelector(".fold").inert = x !== open;
+  }
+  fit();
+}
+function tab(t) { if (t !== ui.tab) open = t === "today" && wide() ? firstOpen()?.id ?? null : null; ui.tab = t; ui.page = 0; keep(); render(); }
 function filter(f) { ui.filter = f; ui.page = 0; keep(); render(); }
 function page(d) { ui.page += d; keep(); renderBoard(); }
 function search(q) { ui.query = q; ui.page = 0; keep(); renderBoard(); }
+function edited(id, el) { edits[id] = el.value; delete needYes[id]; fit(); }
+function fit() { document.querySelectorAll("textarea").forEach((t) => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 
 function lede() {
   const f = flagged(), left = f.filter((g) => !g.outcome), next = left[0];
@@ -275,90 +313,100 @@ function lede() {
   let h, p;
   if (!n) { h = "Everyone looks set to arrive."; p = `None of the guests arriving in the next ${data.days_ahead} days are likely to cancel.`; }
   else if (!left.length) {
-    const sent = f.filter((g) => g.outcome === "sent").length;
+    const count = (o) => f.filter((g) => g.outcome === o).length, sent = count("sent"), rej = count("rejected"), lft = count("left");
     h = "All done for this morning.";
-    p = `${plural(n, "guest", "guests")} handled: ${plural(sent, "message", "messages")} sent, ${n - sent} left alone.`;
+    p = [plural(sent, "message", "messages") + " sent", rej ? plural(rej, "draft", "drafts") + " rejected" : "", lft ? `${lft} left alone` : ""]
+        .filter(Boolean).join(", ") + ".";
   } else {
     h = `${WORDS[n] ?? n} ${n === 1 ? "guest" : "guests"} might not show.`;
-    p = `<b>${esc(a.total)}</b> of bookings arriving in the next ${data.days_ahead} days. Start with <b>${esc(next.booking.guest.split(" ")[0])}</b>.`;
+    p = `Their bookings come to <b>${esc(a.total)}</b> over the next ${data.days_ahead} days. Start with <b>${esc(next.booking.guest.split(" ")[0])}</b>.`;
   }
   return `<h1>${h}</h1><p>${p}</p>
     <details class="proof"><summary>How sure is this? ${ICON.chev}</summary><div>
-      <p>On ${r.mornings} test mornings from 2017, this desk flagged about ${r.per_morning} guests a day and ${pct(r.share_cancelled)} of them did cancel.
-        That's about ${r.caught_per_morning} rooms, or ${esc(r.caught_value_per_morning)} of bookings, each morning that you'd hear about early instead of on the night.
-        Picking guests at random finds about half as many. These numbers come from past bookings, not a live motel.</p>
+      <p>On ${r.mornings} test mornings from 2017, this desk flagged about ${r.per_morning} guests a day, and ${pct(r.share_cancelled)} of them did cancel:
+        about ${r.caught_per_morning} guests and ${esc(r.caught_value_per_morning)} of bookings each morning. Picking the same number of guests at random
+        would have found about ${r.random_caught_per_morning}. A short message gives those guests an easy way to tell you early, so the room can go to someone else.
+        These numbers come from past bookings, not a live motel.</p>
       <p>The risk comes from TabPFN, which learns from about 3,000 of this motel's past bookings. The reasons are how often similar past guests cancelled.
-        Messages are written by Gemma on this computer, and code works out every date and total and checks the draft before you see it.</p>
+        Messages are written by Gemma on this computer, and code works out every date and total and checks each message before it goes.</p>
     </div></details>`;
 }
 
 function rowHead(g) {
-  const b = g.booking, f = g.facts, st = status(g), lit = g.flagged && !g.outcome;
-  const nights = plural(f.nights, "night", "nights");
+  const b = g.booking, f = g.facts, st = status(g), lit = g.flagged && !g.outcome && !pending[g.id];
+  const nights = plural(f.nights, "night", "nights"), word = lit && st === "Might not show" ? "" : st;
   return `<button class="head" aria-expanded="${open === g.id}" aria-controls="p-${g.id}" onclick="toggle('${g.id}')">
       <span class="lamp" aria-label="${pct(g.risk)} likely to cancel">${pct(g.risk)}</span>
-      <span class="who"><b>${esc(b.guest)}</b><span><span class="when">${esc(day(b.arrival))}${SEP}${nights}${lit ? "" : SEP}</span>${lit ? "" : `<em class="${st === "Sent" ? "st-sent" : ""}">${st}</em>`}</span></span>
+      <span class="who"><b>${esc(b.guest)}</b><span><span class="when">${esc(day(b.arrival))}${SEP}${nights}${word ? SEP : ""}</span>${word ? `<em class="${tone(st)}">${st}</em>` : ""}</span></span>
       <span class="col">${esc(day(b.arrival))}<span>${nights}</span></span>
-      <span class="col">${esc(channel(g.via))}</span>
+      <span class="col"><em class="${tone(st)}">${st}</em></span>
       <span class="amt">${esc(f.total)}</span>
       <span class="chev">${ICON.chev}</span>
     </button>`;
 }
 
 function why(g) {
-  const rs = g.reasons || [];
-  if (!rs.length) return `<p>${g.flagged ? "No single thing stands out; it's the mix of details on this booking." : "Nothing about this booking stands out."}</p>`;
+  const shared = sharedLabels(), own = (g.reasons || []).filter((r) => !(g.flagged && shared.has(r.label)));
   const say = (r) => `<b>${esc(r.label)}.</b> ${pct(r.rate)} of ${esc(r.who)} cancelled, against ${pct(r.base)} of all past guests.`;
-  const rest = rs.slice(1);
-  return `<p>${say(rs[0])}</p>${rest.length ? `<details class="more"><summary>${plural(rest.length, "more reason", "more reasons")} ${ICON.chev}</summary>
+  if (!own.length) return `<p>${g.flagged && shared.size ? "What all of today's flagged guests have in common (above). Beyond that, it's the mix of details on this booking."
+    : g.flagged ? "No single thing stands out; it's the mix of details on this booking." : "Nothing about this booking stands out."}</p>`;
+  const rest = own.slice(1);
+  return `<p>${say(own[0])}</p>${rest.length ? `<details class="more"><summary>${plural(rest.length, "more reason", "more reasons")} ${ICON.chev}</summary>
     <ul>${rest.map((r) => `<li>${say(r)}</li>`).join("")}</ul></details>` : ""}`;
 }
 
 function details(g) {
   const b = g.booking;
-  const party = plural(b.adults, "adult", "adults") + (b.children ? `, ${plural(b.children, "child", "children")}` : "");
-  const items = [`Booked ${plural(b.lead_time, "day", "days")} ahead via ${esc(g.via)}`, party,
-    b.previous_cancellations ? `Cancelled ${plural(b.previous_cancellations, "booking", "bookings")} before` : (b.is_repeated_guest ? "Has stayed before" : "First stay"),
+  const items = [`Booked via ${esc(g.via)}`,
+    b.previous_cancellations ? `Cancelled ${plural(b.previous_cancellations, "booking", "bookings")} before` : (b.is_repeated_guest ? "Has stayed before" : "First stay with you"),
     b.special_requests ? plural(b.special_requests, "special request", "special requests") : "No special requests",
-    g.facts.free_cancel_until ? `Free cancellation until ${esc(day(g.facts.free_cancel_until))}` : "Free cancellation has closed"];
+    `${b.contact.channel === "email" ? "Email" : "WhatsApp"}${SEP}${esc(b.contact.to)}`];
   return `<details class="more"><summary>Booking details ${ICON.chev}</summary><ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul></details>`;
 }
 
 function action(g) {
   const b = g.booking, how = b.contact.channel === "email" ? "email" : "WhatsApp", off = busy[g.id] ? "disabled" : "";
+  if (pending[g.id]) return `<div class="act"><p class="note">${pending[g.id].action === "leave" ? "Left alone: no message." : "Draft rejected: nothing sent."}</p>
+    <button class="btn quiet" onclick="undo('${g.id}')">Undo</button></div>`;
   if (busy[g.id] === "draft") return `<h3>Writing the message</h3><div class="bar" role="progressbar" aria-label="Writing"><i></i></div>
     <p class="note">Gemma is writing it on this computer. About 30 seconds.</p>`;
-  if (g.outcome === "sent") return `<p class="sent">${ICON.check} Sent by ${esc(g.sent.channel === "email" ? "email" : g.sent.channel)} to ${esc(g.sent.to)} at ${esc(g.sent.at)} <span class="tag">demo: not delivered</span></p>
+  if (g.outcome === "sent") return `<p class="sent">${ICON.check}<span>Sent by ${esc(g.sent.channel === "email" ? "email" : g.sent.channel)} to ${esc(g.sent.to)} at ${esc(g.sent.at)} <span class="tag">demo: not delivered</span></span></p>
     <blockquote>${esc(g.final)}</blockquote>`;
   if (g.outcome === "left") return `<p class="note">Left alone: no message needed.</p>`;
   if (g.outcome === "rejected") return `<p class="note">Draft rejected. Nothing was sent.</p>`;
   if (g.stage === "review") {
-    const v = g.problems.length ? `<p class="verdict warn">${ICON.alert}<span>Check before sending: ${g.problems.map(esc).join("; ")}.</span></p>`
+    const yes = needYes[g.id];
+    const v = yes ? `<p class="verdict warn">${ICON.alert}<span>Your edit: ${yes.map(esc).join("; ")}.</span></p>`
+      : g.problems.length ? `<p class="verdict warn">${ICON.alert}<span>Check before sending: ${g.problems.map(esc).join("; ")}.</span></p>`
       : `<p class="verdict ok">${ICON.check}<span>Dates, nights and total match the booking.</span></p>`;
+    const send = yes ? `<button class="btn" ${off} onclick="act('${g.id}','send',{anyway:true})">${ICON.send} Send anyway</button>`
+      : `<button class="btn" ${off} onclick="act('${g.id}','send')">${ICON.send} Send by ${how}</button>`;
     return `<h3><label for="t-${g.id}">Message to ${esc(b.guest.split(" ")[0])}</label></h3>
-      <textarea id="t-${g.id}" oninput="fit()">${esc(g.draft)}</textarea>${v}
-      <div class="act"><button class="btn" ${off} onclick="act('${g.id}','send')">${ICON.send} Send by ${how}</button>
-      <button class="btn quiet" ${off} onclick="act('${g.id}','reject')">Reject draft</button></div>`;
+      <textarea id="t-${g.id}" oninput="edited('${g.id}', this)">${esc(edits[g.id] ?? g.draft)}</textarea>${v}
+      <div class="act">${send}<button class="btn quiet" ${off} onclick="soon('${g.id}','reject')">Reject draft</button></div>`;
   }
   if (g.flagged) return `<div class="act"><button class="btn" ${off} onclick="act('${g.id}','draft')">${ICON.pen} Draft a message</button>
-    <button class="btn quiet" ${off} onclick="act('${g.id}','leave')">Leave</button></div>
+    <button class="btn quiet" ${off} onclick="soon('${g.id}','leave')">Leave</button></div>
     <p class="note hint">The message asks them to confirm, or to say if their plans changed. Leave means no message.</p>`;
   return `<p class="note">${b.due === false ? `Arrives after the next ${data.days_ahead} days. The desk checks it again closer to the day.`
     : `Under ${pct(data.line)}, so no message is suggested.`}</p>`;
 }
 
 function row(g) {
-  const b = g.booking, f = g.facts;
-  const cls = [g.flagged && !g.outcome ? "lit" : "", g.outcome ? "done" : "", open === g.id ? "open" : ""].join(" ");
+  const b = g.booking, f = g.facts, isOpen = open === g.id;
+  const cls = [g.flagged && !g.outcome && !pending[g.id] ? "lit" : "", g.outcome || pending[g.id] ? "done" : "", isOpen ? "open" : ""].join(" ");
+  const party = plural(b.adults, "adult", "adults") + (b.children ? ` + ${b.children}` : "");
   return `<li class="r ${cls}" id="${g.id}">${rowHead(g)}
-    <div class="fold" id="p-${g.id}"><div>${open === g.id ? `<div class="pass">
-      <dl class="cells"><div><dt>Arrives</dt><dd>${esc(day(b.arrival))}</dd></div><div><dt>Nights</dt><dd>${f.nights}</dd></div>
-        <div><dt>Total</dt><dd>${esc(f.total)}</dd></div><div><dt>Room</dt><dd>${esc(b.reserved_room_type)}</dd></div></dl>
+    <div class="fold" id="p-${g.id}" ${isOpen ? "" : "inert"}><div><div class="pass">
+      <dl class="cells"><div><dt>Room</dt><dd>${esc(b.reserved_room_type)}</dd></div><div><dt>Party</dt><dd>${party}</dd></div>
+        <div><dt>Booked</dt><dd>${plural(b.lead_time, "day", "days")} ahead</dd></div>
+        <div><dt>Free cancel</dt><dd>${f.free_cancel_until ? "Until " + esc(day(f.free_cancel_until)) : "Closed"}</dd></div></dl>
       <div class="sec why"><h3>Why</h3>${why(g)}${details(g)}</div>
-      <div class="sec"><p class="contact">${b.contact.channel === "email" ? ICON.mail : ICON.phone} ${esc(how(b.contact.channel))}${SEP}${esc(b.contact.to)}</p></div>
       <div class="sec">${action(g)}${errors[g.id] ? `<p class="err" role="alert">${esc(errors[g.id])}</p>` : ""}</div>
-    </div>` : ""}</div></div></li>`;
+    </div></div></div></li>`;
 }
+
+const COLS = `<li class="cols" aria-hidden="true"><span>Risk</span><span>Guest</span><span>Arrives</span><span>Status</span><span>Total</span><span></span></li>`;
 
 function bookingsList() {
   const q = ui.query.trim().toLowerCase();
@@ -367,29 +415,34 @@ function bookingsList() {
     .sort((a, b) => a.booking.arrival.localeCompare(b.booking.arrival) || b.risk - a.risk);
 }
 
-const COLS = `<li class="cols" aria-hidden="true"><span>Risk</span><span>Guest</span><span>Arrives</span><span>Booked via</span><span>Total</span><span></span></li>`;
-
 function renderBoard() {
   const el = $("#board-slot");
   if (!el) return;
   if (ui.tab === "today") {
-    const others = data.guests.filter((g) => !g.flagged && g.booking.due !== false).length;
-    el.innerHTML = `<ul class="board">${COLS}${flagged().map(row).join("")}</ul>
+    const others = data.guests.filter((g) => !g.flagged && g.booking.due !== false).length, sh = data.shared || [];
+    const common = sh.length && flagged().length ? `<p class="common"><b>What they all have in common:</b> ${sh.map((r) =>
+      `${esc(r.label[0].toLowerCase() + r.label.slice(1))} (${pct(r.rate)} of ${esc(r.who)} cancelled, against ${pct(r.base)} overall)`).join("; ")}.</p>` : "";
+    el.innerHTML = `${common}<ul class="board">${COLS}${flagged().map(row).join("")}</ul>
       ${others ? `<button class="rest" onclick="tab('bookings')">${plural(others, "other arrival looks", "other arrivals look")} fine. See all bookings ${ICON.right}</button>` : ""}`;
-    fit();
-    return;
+    return fit();
   }
   const list = bookingsList(), pages = Math.max(1, Math.ceil(list.length / PAGE));
   ui.page = Math.max(0, Math.min(ui.page, pages - 1));
   const shown = list.slice(ui.page * PAGE, ui.page * PAGE + PAGE);
-  el.innerHTML = shown.length ? `<ul class="board">${COLS}${shown.map(row).join("")}</ul>
+  const perDay = list.reduce((m, g) => (m[g.booking.arrival] = (m[g.booking.arrival] || 0) + 1, m), {});
+  let last = null;
+  const rows = shown.map((g) => {
+    const d = g.booking.arrival, brk = d !== last ? `<li class="daybreak">${esc(day(d, {weekday: "long", day: "numeric", month: "long"}))}${SEP}${plural(perDay[d], "arrival", "arrivals")}</li>` : "";
+    last = d;
+    return brk + row(g);
+  }).join("");
+  el.innerHTML = shown.length ? `<ul class="board">${COLS}${rows}</ul>
     <div class="pager"><span>${ui.page * PAGE + 1}–${ui.page * PAGE + shown.length} of ${list.length}</span>
       <div><button aria-label="Previous page" ${ui.page ? "" : "disabled"} onclick="page(-1)">${ICON.left}</button>
       <button aria-label="Next page" ${ui.page < pages - 1 ? "" : "disabled"} onclick="page(1)">${ICON.right}</button></div></div>`
     : `<div class="empty"><p>No bookings match. Try another name or filter.</p></div>`;
   fit();
 }
-function fit() { document.querySelectorAll("textarea").forEach((t) => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 
 function render() {
   $("#day").innerHTML = esc(day(data.day, {weekday: "short", day: "numeric", month: "short", year: "numeric"})) + SEP + "demo day";

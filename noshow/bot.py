@@ -100,7 +100,11 @@ async def edited(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 def main():
     load_dotenv(ROOT / ".env")
-    bot = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"]).build()
+    async def menu(app):   # shows /start and /morning in Telegram's command menu
+        await app.bot.set_my_commands([("start", "Connect the desk to you"),
+                                       ("morning", "Check upcoming bookings and draft messages")])
+
+    bot = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"]).post_init(menu).build()
     bot.add_handler(CommandHandler("start", start))
     bot.add_handler(CommandHandler("morning", morning))
     bot.add_handler(CallbackQueryHandler(button))

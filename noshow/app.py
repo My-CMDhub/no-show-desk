@@ -43,8 +43,9 @@ def page():
 
 @api.get("/api/day")
 def day(request: Request):
-    return {"day": desk.DAY, "line": desk.FLAG_LINE, "roi": desk.roi(),
-            "guests": desk.guests(desk.DAY, request.app.state.desk)}
+    guests = desk.guests(desk.DAY, request.app.state.desk)
+    return {"day": desk.DAY, "line": desk.FLAG_LINE, "days_ahead": desk.DAYS_AHEAD, "roi": desk.roi(),
+            "at_risk": desk.at_risk(guests), "guests": guests}
 
 
 @api.post("/api/morning")

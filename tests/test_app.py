@@ -21,8 +21,8 @@ def client(tmp_path):
     sent = []
     graph = desk.app(tmp_path / "desk.sqlite", writer=lambda b: GOOD,
                      sender=lambda b, text: sent.append(text) or {**b["contact"], "at": "09:14", "demo": True})
-    for n, name, risk in [(1, "Ana Silva", 0.64), (2, "Ben Carter", 0.12)]:
-        graph.invoke({"booking": booking(n, name), "risk": risk, "flagged": risk >= desk.FLAG_LINE,
+    for n, name, risk, due in [(1, "Ana Silva", 0.64, True), (2, "Ben Carter", 0.12, True), (3, "Cy Lee", 0.7, False)]:
+        graph.invoke({"booking": {**booking(n, name), "due": due}, "risk": risk, "flagged": due and risk >= desk.FLAG_LINE,
                       "reasons": []}, {"configurable": {"thread_id": f"{desk.DAY}-{n}"}})
     api.state.desk = graph
     c = TestClient(api)
@@ -32,8 +32,10 @@ def client(tmp_path):
 
 def test_the_day_lists_every_guest_riskiest_first_with_where_each_stands(client):
     day = client.get("/api/day").json()
-    assert [(g["booking"]["guest"], g["stage"]) for g in day["guests"]] == [("Ana Silva", "choose"), ("Ben Carter", None)]
+    assert [(g["booking"]["guest"], g["stage"]) for g in day["guests"]] == [
+        ("Cy Lee", None), ("Ana Silva", "choose"), ("Ben Carter", None)]   # a later booking is listed, never flagged
     assert day["line"] == 0.30 and day["roi"]["per_morning"] == 7.0
+    assert day["at_risk"] == {"guests": 1, "total": "$286.50"}   # flagged guests due in the window, worked out in code
 
 
 def test_draft_then_send_records_a_mock_delivery(client):
@@ -59,3 +61,4 @@ def test_roi_from_the_30_test_mornings():
     r = desk.roi()
     assert (r["mornings"], r["per_morning"], r["share_cancelled"], r["caught_per_morning"]) == (30, 7.0, 0.53, 3.7)
     assert (r["caught"], r["cancelled"]) == (111, 172)
+    assert r["caught_value_per_morning"] == "$2,378"   # whole-stay totals of flagged guests who did cancel

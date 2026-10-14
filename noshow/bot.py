@@ -5,6 +5,7 @@ they press Draft or Leave. Started by noshow.app. Nothing is ever sent to a gues
 import asyncio
 import logging
 import os
+from collections import Counter
 from datetime import datetime, timedelta
 
 from telegram import Update
@@ -24,21 +25,22 @@ def is_owner(update: Update) -> bool:
     return bool(user and chat and chat.type == "private" and user.id == owner_id())
 
 
-def summary(guests: list[dict], line: float, url: str) -> str:
+def summary(guests: list[dict], line: float, url: str, total: str) -> str:
     flagged = [g for g in guests if g["flagged"]]
     if not flagged:
-        return f"Good morning. None of the {len(guests)} arriving guests is {line:.0%} or more likely to cancel. {url}"
-    rows = []
-    for g in flagged:
-        b, a = g["booking"], g["booking"]["arrival"]
-        row = f"• {b['guest']}, {g['risk']:.0%}, arrives {a:%a} {a.day} {a:%b}"
-        if g["reasons"]:
-            r = g["reasons"][0]
-            row += f". {r['label']} ({r['rate']:.0%} of similar past guests cancelled)"
-        rows.append(row)
-    verb = "is" if len(flagged) == 1 else "are"
-    return (f"Good morning. {len(flagged)} of {len(guests)} arriving guests {verb} {line:.0%} or more likely "
-            f"to cancel:\n\n" + "\n".join(rows) + f"\n\nDraft a message or leave each one: {url}")
+        return f"Good morning. None of the guests arriving in the next {desk.DAYS_AHEAD} days look likely to cancel. {url}"
+    names = [f"{g['booking']['guest']} ({g['risk']:.0%})" for g in flagged[:3]]
+    first = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+    more = f", plus {len(flagged) - 3} more" if len(flagged) > 3 else ""
+    tops = Counter((g["reasons"][0]["label"], g["reasons"][0]["rate"]) for g in flagged if g["reasons"])
+    shared = ""
+    if tops and (top := tops.most_common(1)[0])[1] * 2 > len(flagged):
+        (label, rate), _ = top
+        shared = f"What most of them share: {label[0].lower() + label[1:]} ({rate:.0%} of similar past guests cancelled).\n"
+    n = len(flagged)
+    return (f"Good morning. {n} guest{'s' if n != 1 else ''} arriving in the next {desk.DAYS_AHEAD} days might not "
+            f"show: {total} of bookings.\n\nStart with {first}{more}.\n{shared}\n"
+            f"Draft a message or leave each one: {url}")
 
 
 def seconds_until(hhmm: str, now: datetime) -> float:
@@ -49,7 +51,7 @@ def seconds_until(hhmm: str, now: datetime) -> float:
 
 async def todays_summary(app: Application) -> str:
     guests = await asyncio.to_thread(desk.morning, desk.DAY, app.bot_data["desk"])
-    return summary(guests, desk.FLAG_LINE, os.getenv("PAGE_URL", "http://localhost:8000"))
+    return summary(guests, desk.FLAG_LINE, os.getenv("PAGE_URL", "http://localhost:8000"), desk.at_risk(guests)["total"])
 
 
 async def hello(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

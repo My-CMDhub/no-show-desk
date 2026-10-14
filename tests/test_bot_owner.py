@@ -29,19 +29,20 @@ def g(name, risk, day, reasons=(), flagged=True):
             "booking": {"guest": name, "arrival": date(2017, 3, day)}}
 
 
-def test_summary_lists_flagged_guests_with_their_top_reason():
-    guests = [g("Ana Silva", 0.64, 6, [{"label": "Booked 210 days ahead", "rate": 0.45}]),
-              g("Ben Carter", 0.31, 7), g("Chloe Nguyen", 0.1, 7, flagged=False)]
-    assert summary(guests, 0.30, "http://localhost:8000") == (
-        "Good morning. 2 of 3 arriving guests are 30% or more likely to cancel:\n\n"
-        "• Ana Silva, 64%, arrives Mon 6 Mar. Booked 210 days ahead (45% of similar past guests cancelled)\n"
-        "• Ben Carter, 31%, arrives Tue 7 Mar\n\n"
+def test_summary_is_short_names_who_to_start_with_and_what_they_share():
+    agent = {"label": "Booked through agent 9", "rate": 0.40}
+    guests = [g("Ana Silva", 0.64, 6, [agent]), g("Ben Carter", 0.51, 7, [agent]), g("Cy Lee", 0.44, 7, [agent]),
+              g("Dee Moss", 0.31, 8), g("Chloe Nguyen", 0.1, 7, flagged=False)]
+    assert summary(guests, 0.30, "http://localhost:8000", "$1,834") == (
+        "Good morning. 4 guests arriving in the next 3 days might not show: $1,834 of bookings.\n\n"
+        "Start with Ana Silva (64%), Ben Carter (51%) and Cy Lee (44%), plus 1 more.\n"
+        "What most of them share: booked through agent 9 (40% of similar past guests cancelled).\n\n"
         "Draft a message or leave each one: http://localhost:8000")
 
 
 def test_summary_on_a_quiet_morning_says_so():
-    assert summary([g("Chloe Nguyen", 0.1, 7, flagged=False)], 0.30, "http://x") == (
-        "Good morning. None of the 1 arriving guests is 30% or more likely to cancel. http://x")
+    assert summary([g("Chloe Nguyen", 0.1, 7, flagged=False)], 0.30, "http://x", "$0.00") == (
+        "Good morning. None of the guests arriving in the next 3 days look likely to cancel. http://x")
 
 
 def test_the_ping_waits_until_the_next_morning_time():

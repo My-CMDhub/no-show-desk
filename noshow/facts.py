@@ -17,6 +17,7 @@ def work_out_facts(b: dict) -> dict:
         "departure": arrival + timedelta(days=nights),
         "nights": nights,
         "total": f"${b['adr'] * nights:,.2f}",
+        "amount": round(b["adr"] * nights, 2),
         "free_cancel_until": free_until,
     }
 

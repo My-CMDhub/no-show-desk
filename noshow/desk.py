@@ -5,6 +5,7 @@ Run from the terminal: .venv/bin/python -m noshow.desk 2017-03-06
 """
 import json
 import os
+from functools import lru_cache
 import sqlite3
 import sys
 from datetime import datetime
@@ -29,20 +30,25 @@ RISKS = ROOT / "results/morning_risks.csv"   # 30 test mornings, every guest's s
 DAY = os.getenv("DEMO_DAY", "2017-02-01")
 SEED = int(os.getenv("DEMO_SEED", "3"))
 HISTORY_ROWS, ROOMS, DAYS_AHEAD = 3000, 20, 3   # a 20-room motel with about 3,000 past bookings
+LATER, LATER_DAYS = 30, 14   # bookings further out, listed in the bookings view, never flagged yet
 FLAG_LINE = 0.30   # owner's choice, 14 Oct; on 30 test mornings it flagged 3–13 guests a day, never none
 
 # Fictional guests for the demo; the dataset has no names or contact details.
 NAMES = ["Ana Silva", "Ben Carter", "Chloe Nguyen", "Daniel Okafor", "Elena Rossi", "Farid Haddad",
          "Grace Kim", "Hugo Martin", "Isla Murphy", "Jonas Berg", "Keira Walsh", "Liam O'Brien",
          "Maya Patel", "Noah Fischer", "Olivia Brown", "Pedro Costa", "Quinn Taylor", "Rosa Lopez",
-         "Sam Wilson", "Tara Singh", "Umar Sheikh", "Vera Novak", "Will Chen", "Yara Haddad"]
+         "Sam Wilson", "Tara Singh", "Umar Sheikh", "Vera Novak", "Will Chen", "Yara Haddad",
+         "Zoe Adams", "Arjun Rao", "Bea Lindqvist", "Caleb Wright", "Dana Ivanova", "Emil Strand", "Fatima Ali",
+         "George Papas", "Hana Sato", "Ivan Petrov", "Julia Marino", "Kofi Mensah", "Lena Vogel", "Marco Bianchi",
+         "Nadia Karim", "Oscar Lund", "Priya Nair", "Raf Torres", "Sofia Lima", "Theo Grant", "Uma Das",
+         "Victor Hugo Ruiz", "Wren Clarke", "Ximena Soto", "Yusuf Demir", "Zara Hale"]
 FICTION_NUMBERS = ["006", "156", "157", "158", "159", "110", "313", "737", "808"]   # ACMA: 0491 570 xxx is for fiction
 ACTION_STAGE = {"draft": "choose", "leave": "choose", "send": "review", "reject": "review"}
 
 
 def contact(i: int, name: str) -> dict:
-    if i % 2 == 0:
-        return {"channel": "WhatsApp", "to": f"+61 491 570 {FICTION_NUMBERS[i // 2 % len(FICTION_NUMBERS)]}"}
+    if i % 6 == 0 and i // 6 < len(FICTION_NUMBERS):   # only as many WhatsApp guests as there are fiction numbers
+        return {"channel": "WhatsApp", "to": f"+61 491 570 {FICTION_NUMBERS[i // 6]}"}
     first, *rest = name.lower().replace("'", "").split()
     return {"channel": "email", "to": f"{first}.{rest[-1][0]}@example.com"}
 
@@ -73,14 +79,18 @@ def morning(today: str, desk=None, seed: int = SEED) -> list[dict]:
     df = load()
     day = pd.Timestamp(today)
     history = df[df.arrival < day].sample(HISTORY_ROWS, random_state=seed)   # only outcomes known by today
-    upcoming = df[(df.arrival >= day) & (df.arrival < day + pd.Timedelta(days=DAYS_AHEAD))
-                  & (df.deposit_type == "No Deposit")].sample(ROOMS, random_state=seed)
+    no_deposit = df[df.deposit_type == "No Deposit"]
+    upcoming = no_deposit[(no_deposit.arrival >= day) & (no_deposit.arrival < day + pd.Timedelta(days=DAYS_AHEAD))
+                          ].sample(ROOMS, random_state=seed)   # the measured morning (scripts/eval_thresholds.py)
+    later = no_deposit[(no_deposit.arrival >= day + pd.Timedelta(days=DAYS_AHEAD))
+                       & (no_deposit.arrival < day + pd.Timedelta(days=LATER_DAYS))].sample(LATER, random_state=seed)
+    both = pd.concat([upcoming, later])
 
     model = TabPFNClassifier()
     model.fit(history[FEATURES], history[TARGET])
-    risks = model.predict_proba(upcoming[FEATURES])[:, 1]
+    risks = model.predict_proba(both[FEATURES])[:, 1]   # each booking is scored against history alone
 
-    for i, ((idx, row), risk) in enumerate(zip(upcoming.iterrows(), risks)):
+    for i, ((idx, row), risk) in enumerate(zip(both.iterrows(), risks)):
         name = NAMES[i % len(NAMES)]
         booking = {"id": f"{today}-{idx}", "guest": name, "contact": contact(i, name), "today": day.date(),
                    "arrival": row.arrival.date(), "lead_time": int(row.lead_time),
@@ -90,10 +100,10 @@ def morning(today: str, desk=None, seed: int = SEED) -> list[dict]:
                    "adr": float(row.adr), "reserved_room_type": str(row.reserved_room_type),
                    "channel": str(row.market_segment), "previous_cancellations": int(row.previous_cancellations),
                    "is_repeated_guest": bool(row.is_repeated_guest),
-                   "special_requests": int(row.total_of_special_requests)}
-        flagged = bool(risk >= FLAG_LINE)
+                   "special_requests": int(row.total_of_special_requests), "due": i < ROOMS}
+        flagged = bool(booking["due"] and risk >= FLAG_LINE)   # later bookings are listed, not messaged yet
         desk.invoke({"booking": booking, "risk": float(risk), "flagged": flagged,
-                     "reasons": reasons(row, history) if flagged else []},
+                     "reasons": reasons(row, history) if risk >= FLAG_LINE else []},
                     {"configurable": {"thread_id": booking["id"]}})
     return guests(today, desk)
 
@@ -125,14 +135,23 @@ def act(thread: str, action: str, text: str | None = None, desk=None) -> dict:
     return guest(thread, desk)
 
 
+def at_risk(day_guests: list[dict]) -> dict:
+    flagged = [g for g in day_guests if g.get("flagged")]
+    return {"guests": len(flagged), "total": f"${sum(g['facts']['amount'] for g in flagged):,.2f}"}
+
+
+@lru_cache
 def roi(line: float = FLAG_LINE) -> dict:
     """What this line did on the 30 test mornings: historical data, not a live motel."""
     r = pd.read_csv(RISKS)
+    df = load()
+    r["total"] = r.row.map(df.adr * (df.stays_in_weekend_nights + df.stays_in_week_nights))   # whole-stay totals
     flagged, mornings = r[r.risk >= line], r.day.nunique()
     return {"mornings": mornings, "per_morning": round(len(flagged) / mornings, 1),
             "share_cancelled": round(float(flagged.cancelled.mean()), 2),
             "caught_per_morning": round(flagged.cancelled.sum() / mornings, 1),
-            "caught": int(flagged.cancelled.sum()), "cancelled": int(r.cancelled.sum())}
+            "caught": int(flagged.cancelled.sum()), "cancelled": int(r.cancelled.sum()),
+            "caught_value_per_morning": f"${flagged.total[flagged.cancelled == 1].sum() / mornings:,.0f}"}
 
 
 if __name__ == "__main__":

@@ -11,44 +11,81 @@ GOOD = ("Hi Ana, 3 nights from Friday 10 March to Monday 13 March, $286.50 in to
         "Cancel free until Wednesday 8 March. Reply YES to keep the room.")
 
 
-def run(writer, risk=0.8, thread="t1"):
-    app = build(writer=writer, checkpointer=InMemorySaver())
+def run(writer, risk=0.8, thread="t1", sent=None):
+    sender = lambda booking, text: (sent.append(text) if sent is not None else None) or {"channel": "email"}
+    app = build(writer=writer, sender=sender, checkpointer=InMemorySaver())
     cfg = {"configurable": {"thread_id": thread}}
-    return app, cfg, app.invoke({"booking": BOOKING, "risk": risk}, cfg)
+    return app, cfg, app.invoke({"booking": BOOKING, "risk": risk, "flagged": risk >= 0.3}, cfg)
 
 
-def test_low_risk_gets_no_draft():
+def stage(out):
+    return out["__interrupt__"][0].value["stage"]
+
+
+def test_unflagged_guest_ends_without_pausing():
     calls = []
     _, _, out = run(lambda b: calls.append(b) or GOOD, risk=0.2)
-    assert calls == [] and "draft" not in out
+    assert calls == [] and "__interrupt__" not in out and "draft" not in out
 
 
-def test_a_good_draft_pauses_for_the_owner_then_saves_on_approve():
-    app, cfg, out = run(lambda b: GOOD)
-    assert out["__interrupt__"][0].value["problems"] == []
-    done = app.invoke(Command(resume="approve"), cfg)
-    assert done["final"] == GOOD and done["attempts"] == 1
+def test_flagged_guest_waits_for_the_owner_before_any_draft():
+    calls = []
+    _, _, out = run(lambda b: calls.append(b) or GOOD)
+    assert stage(out) == "choose" and calls == []
+
+
+def test_leave_ends_without_drafting():
+    calls = []
+    app, cfg, _ = run(lambda b: calls.append(b) or GOOD)
+    done = app.invoke(Command(resume="leave"), cfg)
+    assert done["outcome"] == "left" and calls == [] and "draft" not in done
+
+
+def test_draft_pauses_again_for_review_with_the_check_result():
+    app, cfg, _ = run(lambda b: GOOD)
+    out = app.invoke(Command(resume="draft"), cfg)
+    assert stage(out) == "review" and out["draft"] == GOOD and out["problems"] == []
+
+
+def test_send_delivers_the_draft_and_records_how():
+    sent = []
+    app, cfg, _ = run(lambda b: GOOD, sent=sent)
+    app.invoke(Command(resume="draft"), cfg)
+    done = app.invoke(Command(resume="send"), cfg)
+    assert sent == [GOOD] and done["outcome"] == "sent" and done["sent"] == {"channel": "email"}
+
+
+def test_owner_edit_is_what_gets_sent():
+    sent = []
+    app, cfg, _ = run(lambda b: GOOD, sent=sent)
+    app.invoke(Command(resume="draft"), cfg)
+    done = app.invoke(Command(resume={"decision": "send", "text": "edited"}), cfg)
+    assert sent == ["edited"] and done["final"] == "edited"
+
+
+def test_reject_discards_the_draft_and_sends_nothing():
+    sent = []
+    app, cfg, _ = run(lambda b: GOOD, sent=sent)
+    app.invoke(Command(resume="draft"), cfg)
+    done = app.invoke(Command(resume="reject"), cfg)
+    assert sent == [] and done["outcome"] == "rejected" and not done.get("final")
 
 
 def test_a_wrong_draft_is_redrafted_once():
     drafts = iter([GOOD.replace("$286.50", "$250.00"), GOOD])
-    _, _, out = run(lambda b: next(drafts))
-    assert out["attempts"] == 2 and out["__interrupt__"][0].value["problems"] == []
+    app, cfg, _ = run(lambda b: next(drafts))
+    out = app.invoke(Command(resume="draft"), cfg)
+    assert out["attempts"] == 2 and out["problems"] == []
 
 
 def test_still_wrong_after_retry_reaches_owner_flagged():
-    _, _, out = run(lambda b: GOOD.replace("$286.50", "$250.00"))
-    assert out["attempts"] == 2
-    assert out["__interrupt__"][0].value["problems"] == ["amount $250.00 is not the total $286.50"]
+    app, cfg, _ = run(lambda b: GOOD.replace("$286.50", "$250.00"))
+    out = app.invoke(Command(resume="draft"), cfg)
+    assert out["attempts"] == 2 and out["problems"] == ["amount $250.00 is not the total $286.50"]
 
 
 def test_the_brief_carries_facts_worked_out_in_code():
     seen = []
-    run(lambda b: seen.append(b) or GOOD)
+    app, cfg, _ = run(lambda b: seen.append(b) or GOOD)
+    app.invoke(Command(resume="draft"), cfg)
     assert "Total: $286.50" in seen[0] and "Free cancellation until: Wednesday 8 March" in seen[0]
-
-
-def test_owner_edit_replaces_the_draft():
-    app, cfg, _ = run(lambda b: GOOD)
-    done = app.invoke(Command(resume={"decision": "edit", "text": "edited"}), cfg)
-    assert done["decision"] == "edit" and done["final"] == "edited"

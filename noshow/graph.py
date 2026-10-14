@@ -1,5 +1,6 @@
-"""One run of this graph per flagged booking. The risk score arrives in the state, worked out
-for the whole morning's bookings in one TabPFN call (see desk.py)."""
+"""One run of this graph per booking. The risk score arrives in the state, worked out for the whole
+morning's bookings in one TabPFN call (see desk.py). A flagged booking pauses twice for the owner:
+first Draft or Leave (no model runs until Draft), then Send or Reject once the draft is checked."""
 from typing import Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -9,23 +10,29 @@ from noshow.check import check_draft
 from noshow.draft import facts_brief, write_draft
 from noshow.facts import work_out_facts
 
-RISK_LINE = 0.5   # used only when the morning run has not ranked the bookings itself
 MAX_DRAFTS = 2    # one redraft if the check finds a wrong fact, then the owner sees it flagged
 
 
 class Desk(TypedDict, total=False):
     booking: dict
     risk: float
-    flagged: bool        # set by the morning run: among the day's riskiest
+    flagged: bool        # set by the morning run: risk at or over the line
+    reasons: list[dict]
     facts: dict
     draft: str
     problems: list[str]
     attempts: int
-    decision: str        # "approve" | "reject" | "edit"
     final: str
+    sent: dict           # what the sender reported: channel, address, time
+    outcome: str         # "left" | "sent" | "rejected"
 
 
-def build(writer: Callable[[str], str] = write_draft, checkpointer=None):
+def build(sender: Callable[[dict, str], dict], writer: Callable[[str], str] = write_draft, checkpointer=None):
+    # Nodes with a pause re-run from their top on resume, so they do nothing before interrupt().
+    def choose(s: Desk) -> dict:
+        answer = interrupt({"stage": "choose"})          # "draft" | "leave"
+        return {"outcome": "left"} if answer == "leave" else {}
+
     def facts(s: Desk) -> dict:
         return {"facts": work_out_facts(s["booking"])}
 
@@ -36,28 +43,27 @@ def build(writer: Callable[[str], str] = write_draft, checkpointer=None):
     def check(s: Desk) -> dict:
         return {"problems": check_draft(s["draft"], s["facts"])}
 
-    def approve(s: Desk) -> dict:
-        # Everything above this line re-runs on resume, so this node does nothing else.
-        answer = interrupt({"guest": s["booking"]["guest"], "risk": round(s["risk"], 2),
-                           "draft": s["draft"], "problems": s["problems"]})
-        if isinstance(answer, dict):           # {"decision": "edit", "text": "..."}
-            return {"decision": answer["decision"], "final": answer.get("text", s["draft"])}
-        return {"decision": answer, "final": s["draft"] if answer == "approve" else ""}
+    def review(s: Desk) -> dict:
+        answer = interrupt({"stage": "review"})          # "send" | "reject" | {"decision": "send", "text": ...}
+        if isinstance(answer, dict):
+            answer, text = answer["decision"], answer.get("text") or s["draft"]
+        else:
+            text = s["draft"]
+        return {"outcome": "rejected"} if answer == "reject" else {"final": text}
 
-    def triage(s: Desk) -> str:
-        return "facts" if s.get("flagged", s["risk"] >= RISK_LINE) else END
-
-    def after_check(s: Desk) -> str:
-        return "approve" if not s["problems"] or s["attempts"] >= MAX_DRAFTS else "draft"
+    def send(s: Desk) -> dict:
+        return {"sent": sender(s["booking"], s["final"]), "outcome": "sent"}
 
     g = StateGraph(Desk)
-    g.add_node("facts", facts)
-    g.add_node("draft", draft)
-    g.add_node("check", check)
-    g.add_node("approve", approve)
-    g.add_conditional_edges(START, triage)
+    for name, node in [("choose", choose), ("facts", facts), ("draft", draft), ("check", check),
+                       ("review", review), ("send", send)]:
+        g.add_node(name, node)
+    g.add_conditional_edges(START, lambda s: "choose" if s.get("flagged") else END)
+    g.add_conditional_edges("choose", lambda s: END if s.get("outcome") == "left" else "facts")
     g.add_edge("facts", "draft")
     g.add_edge("draft", "check")
-    g.add_conditional_edges("check", after_check)
-    g.add_edge("approve", END)
+    g.add_conditional_edges("check", lambda s: "review" if not s["problems"] or s["attempts"] >= MAX_DRAFTS
+                            else "draft")
+    g.add_conditional_edges("review", lambda s: END if s.get("outcome") == "rejected" else "send")
+    g.add_edge("send", END)
     return g.compile(checkpointer=checkpointer)

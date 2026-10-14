@@ -6,248 +6,410 @@
 <title>No-Show Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #F2F4F1; --card: #FFFFFF; --ink: #18211F; --muted: #5F6B67; --line: #D9DFDB;
-    --pool: #0F6E68; --pool-ink: #FFFFFF; --tag: #E2683C; --tag-ink: #FFFFFF; --done: #A9B3AF;
-    --ok: #2F7D4F; --warn: #A3461F; --demo: #E6E9E7;
-    --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
-    --body: "Public Sans", system-ui, sans-serif;
+    --panel: #F4F5F2; --row: #FFFFFF; --ink: #15191C; --muted: #5E676C; --rule: #DADEDB; --rule-strong: #C3C9C6;
+    --lamp: #F2B705; --lamp-ink: #15191C; --lamp-soft: #FCF1CC; --ok: #1F7A5A; --warn: #9A3B12;
+    --ink-btn: #15191C; --ink-btn-text: #FFFFFF; --focus: #15191C;
+    --s1: 15px; --s2: 30px;
+    --face: "Overpass", "Helvetica Neue", Arial, sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --paper: #121816; --card: #1A2220; --ink: #E8EEEB; --muted: #9AA7A2; --line: #2A3532;
-      --pool: #4FB3A9; --pool-ink: #0C1312; --tag: #F0875C; --tag-ink: #1A0E08; --done: #3E4A47;
-      --ok: #6CC08E; --warn: #F0A27E; --demo: #26302D;
+      --panel: #121517; --row: #1A1E21; --ink: #ECEFEC; --muted: #9BA4A8; --rule: #2A3034; --rule-strong: #3A4247;
+      --lamp-soft: #3A3115; --ok: #5CC197; --warn: #F0A27E;
+      --ink-btn: #ECEFEC; --ink-btn-text: #121517; --focus: #ECEFEC; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --paper: #121816; --card: #1A2220; --ink: #E8EEEB; --muted: #9AA7A2; --line: #2A3532;
-    --pool: #4FB3A9; --pool-ink: #0C1312; --tag: #F0875C; --tag-ink: #1A0E08; --done: #3E4A47;
-    --ok: #6CC08E; --warn: #F0A27E; --demo: #26302D;
+    --panel: #121517; --row: #1A1E21; --ink: #ECEFEC; --muted: #9BA4A8; --rule: #2A3034; --rule-strong: #3A4247;
+    --lamp-soft: #3A3115; --ok: #5CC197; --warn: #F0A27E;
+    --ink-btn: #ECEFEC; --ink-btn-text: #121517; --focus: #ECEFEC; color-scheme: dark;
   }
+
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.5 var(--body); }
-  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
-  button { font: inherit; cursor: pointer; }
-  :focus-visible { outline: 3px solid var(--pool); outline-offset: 2px; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--panel); color: var(--ink); font: 400 var(--s1)/1.5 var(--face);
+         font-variant-numeric: tabular-nums; caret-color: var(--ink); }
+  ::selection { background: var(--lamp); color: var(--lamp-ink); }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  svg { flex: none; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
 
-  /* header */
-  .brand { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .day { margin: 4px 0 0; font-size: 15px; color: var(--muted); }
-  h1 { margin: 20px 0 8px; font: 800 clamp(40px, 9vw, 64px)/0.95 var(--display); letter-spacing: .005em; }
-  h1 .of { color: var(--muted); font-weight: 600; }
-  .lede { margin: 0 0 16px; font-size: 18px; max-width: 34em; }
-  .roi { margin: 0; padding: 12px 14px; border-left: 3px solid var(--tag); background: var(--card);
-         font-size: 14px; color: var(--muted); max-width: 40em; }
-  .roi b { color: var(--ink); font-weight: 600; }
+  /* top line */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 0; color: var(--muted); }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 800; letter-spacing: .01em; }
+  .brand i { width: 10px; height: 10px; border-radius: 3px; background: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-soft); }
+  .demo { padding: 1px 8px; border: 1px solid var(--rule-strong); border-radius: 99px; white-space: nowrap; }
 
-  /* toolbar */
-  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-         margin: 32px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-  .tally { font-size: 14px; color: var(--muted); }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; font-size: 14px; }
-  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  /* headline */
+  .lede { padding: 36px 0 20px; }
+  h1 { margin: 0; font-size: var(--s2); line-height: 1.12; font-weight: 800; letter-spacing: -0.015em; text-wrap: balance; }
+  .lede p { margin: 10px 0 0; color: var(--muted); max-width: 60ch; }
+  .lede p b { color: var(--ink); font-weight: 600; }
+  .proof { margin-top: 14px; }
+  .proof summary, .more summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; }
+  .proof summary { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 4px; }
+  .proof summary::-webkit-details-marker, .more summary::-webkit-details-marker { display: none; }
+  .proof[open] > summary svg, .more[open] > summary svg { transform: rotate(180deg); }
+  .proof div { margin-top: 10px; max-width: 62ch; color: var(--muted); }
+  .proof div p { margin: 0 0 8px; }
 
-  /* guest card */
-  .guest { display: grid; grid-template-columns: 72px 1fr; gap: 20px; padding: 20px; margin-bottom: 14px;
-           background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
-  .tag { position: relative; width: 64px; height: 118px; display: grid; place-items: end center; padding-bottom: 16px;
-         background: var(--tag); color: var(--tag-ink);
-         clip-path: polygon(50% 0, 100% 16%, 100% 84%, 50% 100%, 0 84%, 0 16%);
-         -webkit-mask: radial-gradient(circle at 50% 22px, transparent 6px, #000 6.5px);
-                 mask: radial-gradient(circle at 50% 22px, transparent 6px, #000 6.5px); }
-  .tag b { font: 800 30px/1 var(--display); }
-  .tag small { position: absolute; top: 34px; font: 600 10px/1 var(--body); letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
-  .guest.closed .tag { background: var(--done); color: var(--ink); }
-  h2 { margin: 0; font-size: 21px; font-weight: 600; line-height: 1.25; }
-  .stay { margin: 2px 0 0; font-size: 15px; }
-  .meta { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
-  .why { margin: 16px 0 0; }
-  .why h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .why ul { margin: 0; padding-left: 18px; font-size: 15px; }
-  .why li + li { margin-top: 4px; }
-  .why li b { font-weight: 600; }
-  .why p { margin: 0; font-size: 15px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-  .primary, .quiet { border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 15px; }
-  .primary { border: 1px solid var(--pool); background: var(--pool); color: var(--pool-ink); }
-  .quiet { border: 1px solid var(--line); background: transparent; color: var(--ink); }
-  .primary:disabled, .quiet:disabled { opacity: .55; cursor: wait; }
+  /* switch */
+  .switch { display: flex; border-bottom: 1px solid var(--rule-strong); }
+  .switch button { border: 0; background: none; padding: 10px 2px; margin: 0 20px -1px 0; color: var(--muted); font-weight: 600;
+                   border-bottom: 2px solid transparent; }
+  .switch button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .switch .n { margin-left: 6px; font-weight: 400; color: var(--muted); }
 
-  /* draft */
-  textarea { width: 100%; margin-top: 16px; padding: 12px; min-height: 120px; resize: vertical;
-             font: 400 15px/1.5 var(--body); color: var(--ink); background: var(--paper);
-             border: 1px solid var(--line); border-radius: 8px; }
-  .verdict { margin: 8px 0 0; font-size: 14px; }
+  /* the board */
+  .board { list-style: none; margin: 0; padding: 0; }
+  .r { border-bottom: 1px solid var(--rule); }
+  .head { width: 100%; display: grid; grid-template-columns: 60px minmax(0, 1fr) auto 18px; align-items: center; gap: 14px;
+          padding: 14px 4px; border: 0; background: none; text-align: left; }
+  .head:hover { background: color-mix(in srgb, var(--row) 70%, transparent); }
+  .lamp { display: inline-grid; place-items: center; height: 30px; border-radius: 6px; font-weight: 800;
+          border: 1px solid var(--rule-strong); color: var(--muted); }
+  .lit .lamp { background: var(--lamp); border-color: var(--lamp); color: var(--lamp-ink);
+               box-shadow: 0 1px 1px rgba(0,0,0,.08), 0 0 0 3px var(--lamp-soft); }
+  .done .lamp { border-style: dashed; }
+  .who b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .who > span { color: var(--muted); }
+  .who em { font-style: normal; font-weight: 600; color: var(--ink); }
+  .who em.st-sent { color: var(--ok); }
+  .done .who b { color: var(--muted); }
+  .amt { text-align: right; font-weight: 600; }
+  .col { display: none; color: var(--ink); }
+  .col span { display: block; color: var(--muted); }
+  .sep { display: inline-block; width: 3px; height: 3px; margin: 0 7px; border-radius: 50%; background: currentColor; vertical-align: middle; opacity: .7; }
+  .cols { display: none; }
+  .chev { color: var(--muted); display: grid; transition: transform .26s var(--ease); }
+  .r.open .chev { transform: rotate(180deg); }
+
+  /* the pass that unfolds from a row */
+  .fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .32s var(--ease); }
+  .r.open .fold { grid-template-rows: 1fr; }
+  .fold > div { overflow: hidden; min-height: 0; }
+  .pass { margin: 0 4px 18px; background: var(--row); border: 1px solid var(--rule); border-radius: 10px;
+          box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 24px -16px rgba(0,0,0,.3); }
+  .cells { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; border-bottom: 1px solid var(--rule); }
+  .cells div { padding: 12px 14px; }
+  .cells div + div { border-left: 1px solid var(--rule); }
+  .cells dt { color: var(--muted); }
+  .cells dd { margin: 0; font-weight: 600; }
+  .sec { padding: 14px; border-bottom: 1px solid var(--rule); }
+  .sec:last-child { border-bottom: 0; }
+  .sec h3 { margin: 0 0 4px; font-size: var(--s1); font-weight: 800; }
+  .sec p { margin: 0; max-width: 65ch; }
+  .why b { font-weight: 600; }
+  .more { margin-top: 8px; }
+  .more summary { color: var(--muted); }
+  .more ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
+  .more li + li { margin-top: 4px; }
+  .contact { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .note { color: var(--muted); }
+  .hint { margin-top: 10px !important; }
+
+  .act { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 8px; font-weight: 600;
+         border: 1px solid var(--ink-btn); background: var(--ink-btn); color: var(--ink-btn-text);
+         transition: transform .12s var(--ease), box-shadow .2s var(--ease); }
+  .btn:hover { box-shadow: 0 2px 4px rgba(0,0,0,.12), 0 8px 18px -10px rgba(0,0,0,.4); }
+  .btn:active { transform: translateY(1px); }
+  .btn.quiet { background: transparent; color: var(--ink); border-color: var(--rule-strong); }
+  .btn.quiet:hover { box-shadow: none; border-color: var(--ink); }
+  .btn:disabled { opacity: .5; cursor: progress; box-shadow: none; }
+  textarea { width: 100%; min-height: 128px; padding: 12px; resize: vertical; border: 1px solid var(--rule-strong); border-radius: 8px;
+             background: var(--panel); line-height: 1.55; margin: 6px 0 10px; }
+  .verdict { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 12px !important; }
   .verdict.ok { color: var(--ok); }
   .verdict.warn { color: var(--warn); }
-  .progress { margin-top: 16px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
-  .progress i { display: block; height: 100%; width: 0; background: var(--pool); animation: fill 35s linear forwards; }
-  @keyframes fill { to { width: 92%; } }
-  .note { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+  .bar { height: 3px; border-radius: 2px; background: var(--rule); overflow: hidden; margin: 6px 0 10px; }
+  .bar i { display: block; height: 100%; width: 4%; background: var(--ink); animation: grow 34s var(--ease) forwards; }
+  @keyframes grow { to { width: 94%; } }
+  .sent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--ok); font-weight: 600; }
+  .tag { font-weight: 400; color: var(--muted); border: 1px dashed var(--rule-strong); border-radius: 99px; padding: 0 8px; }
+  blockquote { margin: 10px 0 0; padding: 10px 12px; background: var(--panel); border-radius: 8px; color: var(--muted); }
+  .err { color: var(--warn); margin-top: 8px !important; }
 
-  /* outcome */
-  .outcome { margin-top: 16px; font-size: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
-  .outcome .sent { color: var(--ok); font-weight: 600; }
-  .demo { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--demo); color: var(--muted); }
-  blockquote { margin: 10px 0 0; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); font-size: 14px; }
+  /* bookings tools */
+  .tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 14px 0 6px; }
+  .find { position: relative; flex: 1 1 220px; max-width: 320px; }
+  .find svg { position: absolute; left: 11px; top: 50%; translate: 0 -50%; color: var(--muted); }
+  .find input { width: 100%; height: 40px; padding: 0 12px 0 34px; border: 1px solid var(--rule-strong); border-radius: 8px; background: var(--row); }
+  .find input::placeholder { color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--rule-strong); background: transparent; color: var(--muted); }
+  .chips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+  .pager { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; color: var(--muted); }
+  .pager div { display: flex; gap: 8px; }
+  .pager button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--rule-strong); border-radius: 8px; background: transparent; }
+  .pager button:disabled { opacity: .35; cursor: default; }
 
-  /* the rest of the day */
-  details { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
-  summary { cursor: pointer; font-size: 15px; color: var(--muted); }
-  table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-  td { padding: 8px 4px; border-bottom: 1px solid var(--line); }
-  td:last-child { text-align: right; color: var(--muted); }
+  .empty { padding: 28px 0; }
+  .empty p { margin: 0 0 14px; color: var(--muted); max-width: 52ch; }
+  .rest { display: inline-flex; align-items: center; gap: 6px; margin: 16px 4px 0; padding: 0; border: 0; background: none; color: var(--muted);
+          text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 4px; }
+  footer { padding: 40px 0 48px; color: var(--muted); max-width: 70ch; }
 
-  .empty { padding: 32px 20px; background: var(--card); border: 1px dashed var(--line); border-radius: 12px; }
-  .error { color: var(--warn); font-size: 14px; margin-top: 10px; }
-  .foot { margin-top: 40px; font-size: 13px; color: var(--muted); }
-
-  @media (max-width: 520px) {
-    .guest { grid-template-columns: 1fr; gap: 12px; }
-    .tag { width: 150px; height: 52px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 22px 0 0;
-           clip-path: polygon(0 50%, 14% 0, 86% 0, 100% 50%, 86% 100%, 14% 100%);
-           -webkit-mask: radial-gradient(circle at 22px 50%, transparent 6px, #000 6.5px);
-                   mask: radial-gradient(circle at 22px 50%, transparent 6px, #000 6.5px); }
-    .tag b { font-size: 26px; }
-    .tag small { position: static; }
+  @media (min-width: 720px) {
+    .lede { padding-top: 56px; }
+    .head { grid-template-columns: 64px minmax(0, 1.3fr) 110px minmax(0, 1fr) 100px 18px; }
+    .col { display: block; }
+    .cols { display: grid; grid-template-columns: 64px minmax(0, 1.3fr) 110px minmax(0, 1fr) 100px 18px; gap: 14px;
+            padding: 12px 4px 8px; color: var(--muted); border-bottom: 1px solid var(--rule); }
+    .cols span:nth-child(5) { text-align: right; }
+    .who .when { display: none; }
   }
-  @media (prefers-reduced-motion: reduce) { .progress i { animation: none; width: 60%; } }
+  @media (max-width: 420px) {
+    .cells { grid-template-columns: repeat(2, 1fr); }
+    .cells div:nth-child(3) { border-left: 0; }
+    .cells div:nth-child(n+3) { border-top: 1px solid var(--rule); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fold, .chev, .btn { transition: none; }
+    .bar i { animation: none; width: 60%; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <div class="brand">No-Show Desk</div>
-    <p class="day" id="day"></p>
-    <div id="top"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><i aria-hidden="true"></i>No-Show Desk</div>
+    <span class="demo" id="day"></span>
   </header>
-  <div id="list" aria-live="polite"></div>
-  <p class="foot">Demo motel: real 2017 bookings from two Portuguese hotels (Antonio, Almeida &amp; Nunes, 2019); guest names and contacts are made up.
-    Risk from TabPFN, drafts from Gemma running on this computer. Nothing is sent to anyone.</p>
-</main>
+  <section class="lede" id="lede" aria-live="polite"></section>
+  <div id="main"></div>
+  <footer>Demo motel built on real 2017 bookings from two Portuguese hotels (Antonio, Almeida &amp; Nunes, 2019, CC BY 4.0). Guest names and contacts are made up; prices are shown in dollars. Nothing is sent to anyone.</footer>
+</div>
+
 <script>
+const svg = (d, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  chev: svg('<path d="m6 9 6 6 6-6"/>'),
+  check: svg('<path d="M20 6 9 17l-5-5"/>', 18),
+  alert: svg('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>', 18),
+  send: svg('<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>'),
+  pen: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
+  phone: svg('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>'),
+  mail: svg('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>'),
+  search: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  left: svg('<path d="m15 18-6-6 6-6"/>'),
+  right: svg('<path d="m9 18 6-6-6-6"/>'),
+};
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const pct = (x) => Math.round(x * 100) + "%";
-const when = (iso, opts = {weekday: "short", day: "numeric", month: "short"}) => {
+const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const day = (iso, opts = {weekday: "short", day: "numeric", month: "short"}) => {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-AU", opts);
+  return new Date(y, m - 1, d).toLocaleDateString("en-AU", opts).replace(",", "");
 };
-let day = null, busy = {}, errors = {}, lastId = null;
-let mode = (() => { try { return localStorage.getItem("mode") || "list"; } catch { return "list"; } })();
+const PAGE = 10;
+const SEP = '<span class="sep" aria-hidden="true"></span>';
+const channel = (via) => { const v = String(via || "").replace(/^(an?|the) /, ""); return v[0].toUpperCase() + v.slice(1); };
+const how = (c) => c === "email" ? "Email" : c;
+let data = null, open = null, busy = {}, errors = {};
+let ui = {tab: "today", filter: "all", query: "", page: 0};
+try { Object.assign(ui, JSON.parse(sessionStorage.getItem("ui") || "{}")); } catch {}
+const keep = () => { try { sessionStorage.setItem("ui", JSON.stringify(ui)); } catch {} };
+const flagged = () => data.guests.filter((g) => g.flagged);
+const firstOpen = () => flagged().find((g) => !g.outcome);
+
+function status(g) {
+  if (g.outcome === "sent") return "Sent";
+  if (g.outcome === "left") return "Left";
+  if (g.outcome === "rejected") return "Draft rejected";
+  if (g.stage === "review") return "Draft ready";
+  if (g.flagged) return "Might not show";
+  return g.booking.due === false ? "Later" : "Expected";
+}
 
 async function load() {
   const r = await fetch("/api/day");
-  day = await r.json();
+  data = await r.json();
+  if (open === null && data.guests.length) open = firstOpen()?.id ?? null;
   render();
 }
 
-async function runMorning(btn) {
-  btn.disabled = true; btn.textContent = "Checking guests…";
-  const r = await fetch("/api/morning", {method: "POST"});
-  if (r.ok) { day = await r.json(); render(); }
-  else { btn.disabled = false; btn.textContent = "Check this morning's guests"; $("#morning-error").textContent = "The check didn't finish. Is the internet on? TabPFN scores bookings online."; }
-}
-
 async function act(id, action) {
-  const card = document.getElementById(id);
-  const body = action === "send" ? JSON.stringify({text: card.querySelector("textarea").value}) : undefined;
-  busy[id] = action; lastId = id; delete errors[id]; render();
+  const el = document.getElementById("t-" + id);
+  const body = action === "send" ? JSON.stringify({text: el ? el.value : null}) : undefined;
+  busy[id] = action; delete errors[id]; render();
   try {
     const r = await fetch(`/api/guests/${encodeURIComponent(id)}/${action}`,
                           {method: "POST", headers: {"content-type": "application/json"}, body});
-    if (r.ok) { const g = await r.json(); day.guests = day.guests.map((x) => x.id === id ? g : x); }
-    else if (r.status === 409) { await load(); errors[id] = "This guest was already decided on another screen. Showing where it stands now."; }
+    if (r.ok) {
+      const g = await r.json();
+      data.guests = data.guests.map((x) => x.id === id ? g : x);
+      if (["left", "rejected"].includes(g.outcome) && ui.tab === "today") open = firstOpen()?.id ?? null;   // move on
+    } else if (r.status === 409) { await load(); errors[id] = "Already decided on another screen. This is where it stands now."; }
     else errors[id] = action === "draft" ? "The draft didn't finish. Check that Ollama is running, then try again." : "That didn't go through. Try again.";
   } catch { errors[id] = "Lost contact with the desk. Is it still running?"; }
   delete busy[id]; render();
 }
 
-function setMode(m) {
-  mode = m; try { localStorage.setItem("mode", m); } catch {}
-  render();
+async function runMorning(btn) {
+  btn.disabled = true; btn.textContent = "Checking guests…";
+  const r = await fetch("/api/morning", {method: "POST"});
+  if (r.ok) { data = await r.json(); open = firstOpen()?.id ?? null; render(); return; }
+  btn.disabled = false; btn.textContent = "Check this morning's guests";
+  $("#morning-err").textContent = "The check didn't finish. Risk is scored online, so check the internet connection and try again.";
 }
 
-function reasons(g) {
-  if (!g.reasons.length) return `<p>No single factor stands out; the score comes from the combination.</p>`;
-  return `<ul>${g.reasons.map((r) => `<li><b>${esc(r.label)}.</b> ${pct(r.rate)} of ${esc(r.who)} cancelled (all past guests: ${pct(r.base)}).</li>`).join("")}</ul>`;
-}
+function toggle(id) { open = open === id ? null : id; renderBoard(); }
+function tab(t) { if (t !== ui.tab) open = t === "today" ? firstOpen()?.id ?? null : null; ui.tab = t; ui.page = 0; keep(); render(); }
+function filter(f) { ui.filter = f; ui.page = 0; keep(); render(); }
+function page(d) { ui.page += d; keep(); renderBoard(); }
+function search(q) { ui.query = q; ui.page = 0; keep(); renderBoard(); }
 
-function body(g) {
-  const b = g.booking, how = b.contact.channel === "email" ? "email" : "WhatsApp";
-  if (busy[g.id] === "draft") return `<div class="progress" role="progressbar" aria-label="Drafting"><i></i></div>
-    <p class="note">Gemma is writing the message on this computer. About 30 seconds.</p>`;
-  if (g.outcome === "left") return `<div class="outcome">Left: no message needed.</div>`;
-  if (g.outcome === "rejected") return `<div class="outcome">Draft rejected. Nothing sent.</div>`;
-  if (g.outcome === "sent") return `<div class="outcome"><span class="sent">Sent by ${esc(g.sent.channel)} to ${esc(g.sent.to)} · ${esc(g.sent.at)}</span>
-      <span class="demo">demo: not delivered</span></div><blockquote>${esc(g.final)}</blockquote>`;
-  const off = busy[g.id] ? "disabled" : "";
-  if (g.stage === "review") {
-    const v = g.problems.length
-      ? `<p class="verdict warn">Check before sending: ${g.problems.map(esc).join("; ")}.</p>`
-      : `<p class="verdict ok">Dates, nights and total match the booking.</p>`;
-    return `<label class="note" for="t-${g.id}">Message to ${esc(b.guest)} (you can edit it)</label>
-      <textarea id="t-${g.id}">${esc(g.draft)}</textarea>${v}
-      <div class="actions"><button class="primary" ${off} onclick="act('${g.id}','send')">Send by ${how}</button>
-      <button class="quiet" ${off} onclick="act('${g.id}','reject')">Reject draft</button></div>`;
+function lede() {
+  const f = flagged(), left = f.filter((g) => !g.outcome), next = left[0];
+  const n = f.length, r = data.roi, a = data.at_risk;
+  let h, p;
+  if (!n) { h = "Everyone looks set to arrive."; p = `None of the guests arriving in the next ${data.days_ahead} days are likely to cancel.`; }
+  else if (!left.length) {
+    const sent = f.filter((g) => g.outcome === "sent").length;
+    h = "All done for this morning.";
+    p = `${plural(n, "guest", "guests")} handled: ${plural(sent, "message", "messages")} sent, ${n - sent} left alone.`;
+  } else {
+    h = `${WORDS[n] ?? n} ${n === 1 ? "guest" : "guests"} might not show.`;
+    p = `<b>${esc(a.total)}</b> of bookings arriving in the next ${data.days_ahead} days. Start with <b>${esc(next.booking.guest.split(" ")[0])}</b>.`;
   }
-  return `<div class="actions"><button class="primary" ${off} onclick="act('${g.id}','draft')">Draft a message</button>
-    <button class="quiet" ${off} onclick="act('${g.id}','leave')">Leave</button></div>`;
+  return `<h1>${h}</h1><p>${p}</p>
+    <details class="proof"><summary>How sure is this? ${ICON.chev}</summary><div>
+      <p>On ${r.mornings} test mornings from 2017, this desk flagged about ${r.per_morning} guests a day and ${pct(r.share_cancelled)} of them did cancel.
+        That's about ${r.caught_per_morning} rooms, or ${esc(r.caught_value_per_morning)} of bookings, each morning that you'd hear about early instead of on the night.
+        Picking guests at random finds about half as many. These numbers come from past bookings, not a live motel.</p>
+      <p>The risk comes from TabPFN, which learns from about 3,000 of this motel's past bookings. The reasons are how often similar past guests cancelled.
+        Messages are written by Gemma on this computer, and code works out every date and total and checks the draft before you see it.</p>
+    </div></details>`;
 }
 
-function card(g) {
-  const b = g.booking, f = g.facts, closed = g.outcome ? " closed" : "";
-  const party = `${b.adults} adult${b.adults === 1 ? "" : "s"}${b.children ? `, ${b.children} child${b.children === 1 ? "" : "ren"}` : ""}`;
-  const before = b.previous_cancellations ? ` · cancelled ${b.previous_cancellations} before` : (b.is_repeated_guest ? " · stayed before" : "");
-  return `<article class="guest${closed}" id="${g.id}">
-    <div class="tag" aria-label="Cancel risk ${pct(g.risk)}"><small>risk</small><b>${pct(g.risk)}</b></div>
-    <div>
-      <h2>${esc(b.guest)}</h2>
-      <p class="stay">Arrives ${when(b.arrival)} · ${f.nights} night${f.nights === 1 ? "" : "s"} · ${esc(f.total)} · room ${esc(b.reserved_room_type)}</p>
-      <p class="meta">Booked ${b.lead_time} days ahead via ${esc(g.via)} · ${party}${before} · ${esc(b.contact.to)}</p>
-      <section class="why"><h3>Why flagged</h3>${reasons(g)}</section>
-      ${body(g)}
-      ${errors[g.id] ? `<p class="error" role="alert">${esc(errors[g.id])}</p>` : ""}
-    </div></article>`;
+function rowHead(g) {
+  const b = g.booking, f = g.facts, st = status(g), lit = g.flagged && !g.outcome;
+  const nights = plural(f.nights, "night", "nights");
+  return `<button class="head" aria-expanded="${open === g.id}" aria-controls="p-${g.id}" onclick="toggle('${g.id}')">
+      <span class="lamp" aria-label="${pct(g.risk)} likely to cancel">${pct(g.risk)}</span>
+      <span class="who"><b>${esc(b.guest)}</b><span><span class="when">${esc(day(b.arrival))}${SEP}${nights}${lit ? "" : SEP}</span>${lit ? "" : `<em class="${st === "Sent" ? "st-sent" : ""}">${st}</em>`}</span></span>
+      <span class="col">${esc(day(b.arrival))}<span>${nights}</span></span>
+      <span class="col">${esc(channel(g.via))}</span>
+      <span class="amt">${esc(f.total)}</span>
+      <span class="chev">${ICON.chev}</span>
+    </button>`;
 }
 
-function render() {
-  $("#day").textContent = when(day.day, {weekday: "long", day: "numeric", month: "long", year: "numeric"}) + " · demo day";
-  const flagged = day.guests.filter((g) => g.flagged), rest = day.guests.filter((g) => !g.flagged);
-  const r = day.roi;
-  if (!day.guests.length) {
-    $("#top").innerHTML = `<h1>Good morning.</h1>`;
-    $("#list").innerHTML = `<div class="empty"><p class="lede">This morning's check hasn't run yet. It scores the guests arriving in the next three days and lists the ones likely to cancel.</p>
-      <button class="primary" onclick="runMorning(this)">Check this morning's guests</button><p class="error" id="morning-error"></p></div>`;
+function why(g) {
+  const rs = g.reasons || [];
+  if (!rs.length) return `<p>${g.flagged ? "No single thing stands out; it's the mix of details on this booking." : "Nothing about this booking stands out."}</p>`;
+  const say = (r) => `<b>${esc(r.label)}.</b> ${pct(r.rate)} of ${esc(r.who)} cancelled, against ${pct(r.base)} of all past guests.`;
+  const rest = rs.slice(1);
+  return `<p>${say(rs[0])}</p>${rest.length ? `<details class="more"><summary>${plural(rest.length, "more reason", "more reasons")} ${ICON.chev}</summary>
+    <ul>${rest.map((r) => `<li>${say(r)}</li>`).join("")}</ul></details>` : ""}`;
+}
+
+function details(g) {
+  const b = g.booking;
+  const party = plural(b.adults, "adult", "adults") + (b.children ? `, ${plural(b.children, "child", "children")}` : "");
+  const items = [`Booked ${plural(b.lead_time, "day", "days")} ahead via ${esc(g.via)}`, party,
+    b.previous_cancellations ? `Cancelled ${plural(b.previous_cancellations, "booking", "bookings")} before` : (b.is_repeated_guest ? "Has stayed before" : "First stay"),
+    b.special_requests ? plural(b.special_requests, "special request", "special requests") : "No special requests",
+    g.facts.free_cancel_until ? `Free cancellation until ${esc(day(g.facts.free_cancel_until))}` : "Free cancellation has closed"];
+  return `<details class="more"><summary>Booking details ${ICON.chev}</summary><ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul></details>`;
+}
+
+function action(g) {
+  const b = g.booking, how = b.contact.channel === "email" ? "email" : "WhatsApp", off = busy[g.id] ? "disabled" : "";
+  if (busy[g.id] === "draft") return `<h3>Writing the message</h3><div class="bar" role="progressbar" aria-label="Writing"><i></i></div>
+    <p class="note">Gemma is writing it on this computer. About 30 seconds.</p>`;
+  if (g.outcome === "sent") return `<p class="sent">${ICON.check} Sent by ${esc(g.sent.channel === "email" ? "email" : g.sent.channel)} to ${esc(g.sent.to)} at ${esc(g.sent.at)} <span class="tag">demo: not delivered</span></p>
+    <blockquote>${esc(g.final)}</blockquote>`;
+  if (g.outcome === "left") return `<p class="note">Left alone: no message needed.</p>`;
+  if (g.outcome === "rejected") return `<p class="note">Draft rejected. Nothing was sent.</p>`;
+  if (g.stage === "review") {
+    const v = g.problems.length ? `<p class="verdict warn">${ICON.alert}<span>Check before sending: ${g.problems.map(esc).join("; ")}.</span></p>`
+      : `<p class="verdict ok">${ICON.check}<span>Dates, nights and total match the booking.</span></p>`;
+    return `<h3><label for="t-${g.id}">Message to ${esc(b.guest.split(" ")[0])}</label></h3>
+      <textarea id="t-${g.id}" oninput="fit()">${esc(g.draft)}</textarea>${v}
+      <div class="act"><button class="btn" ${off} onclick="act('${g.id}','send')">${ICON.send} Send by ${how}</button>
+      <button class="btn quiet" ${off} onclick="act('${g.id}','reject')">Reject draft</button></div>`;
+  }
+  if (g.flagged) return `<div class="act"><button class="btn" ${off} onclick="act('${g.id}','draft')">${ICON.pen} Draft a message</button>
+    <button class="btn quiet" ${off} onclick="act('${g.id}','leave')">Leave</button></div>
+    <p class="note hint">The message asks them to confirm, or to say if their plans changed. Leave means no message.</p>`;
+  return `<p class="note">${b.due === false ? `Arrives after the next ${data.days_ahead} days. The desk checks it again closer to the day.`
+    : `Under ${pct(data.line)}, so no message is suggested.`}</p>`;
+}
+
+function row(g) {
+  const b = g.booking, f = g.facts;
+  const cls = [g.flagged && !g.outcome ? "lit" : "", g.outcome ? "done" : "", open === g.id ? "open" : ""].join(" ");
+  return `<li class="r ${cls}" id="${g.id}">${rowHead(g)}
+    <div class="fold" id="p-${g.id}"><div>${open === g.id ? `<div class="pass">
+      <dl class="cells"><div><dt>Arrives</dt><dd>${esc(day(b.arrival))}</dd></div><div><dt>Nights</dt><dd>${f.nights}</dd></div>
+        <div><dt>Total</dt><dd>${esc(f.total)}</dd></div><div><dt>Room</dt><dd>${esc(b.reserved_room_type)}</dd></div></dl>
+      <div class="sec why"><h3>Why</h3>${why(g)}${details(g)}</div>
+      <div class="sec"><p class="contact">${b.contact.channel === "email" ? ICON.mail : ICON.phone} ${esc(how(b.contact.channel))}${SEP}${esc(b.contact.to)}</p></div>
+      <div class="sec">${action(g)}${errors[g.id] ? `<p class="err" role="alert">${esc(errors[g.id])}</p>` : ""}</div>
+    </div>` : ""}</div></div></li>`;
+}
+
+function bookingsList() {
+  const q = ui.query.trim().toLowerCase();
+  const match = {all: () => true, risk: (g) => g.flagged && !g.outcome, decided: (g) => !!g.outcome, later: (g) => g.booking.due === false};
+  return data.guests.filter(match[ui.filter] || match.all).filter((g) => !q || g.booking.guest.toLowerCase().includes(q))
+    .sort((a, b) => a.booking.arrival.localeCompare(b.booking.arrival) || b.risk - a.risk);
+}
+
+const COLS = `<li class="cols" aria-hidden="true"><span>Risk</span><span>Guest</span><span>Arrives</span><span>Booked via</span><span>Total</span><span></span></li>`;
+
+function renderBoard() {
+  const el = $("#board-slot");
+  if (!el) return;
+  if (ui.tab === "today") {
+    const others = data.guests.filter((g) => !g.flagged && g.booking.due !== false).length;
+    el.innerHTML = `<ul class="board">${COLS}${flagged().map(row).join("")}</ul>
+      ${others ? `<button class="rest" onclick="tab('bookings')">${plural(others, "other arrival looks", "other arrivals look")} fine. See all bookings ${ICON.right}</button>` : ""}`;
+    fit();
     return;
   }
-  $("#top").innerHTML = `<h1>${flagged.length} <span class="of">of ${day.guests.length}</span></h1>
-    <p class="lede">guests arriving in the next three days are ${pct(day.line)} or more likely to cancel.
-      A short message asking them to confirm lets you find out early and resell the room.</p>
-    <p class="roi">On ${r.mornings} test mornings from 2017, this line flagged about <b>${r.per_morning} guests a day</b>.
-      ${pct(r.share_cancelled)} of them did cancel: about <b>${r.caught_per_morning} rooms a morning</b> you'd hear about days early
-      instead of on the night. From past bookings, not a live motel.</p>`;
+  const list = bookingsList(), pages = Math.max(1, Math.ceil(list.length / PAGE));
+  ui.page = Math.max(0, Math.min(ui.page, pages - 1));
+  const shown = list.slice(ui.page * PAGE, ui.page * PAGE + PAGE);
+  el.innerHTML = shown.length ? `<ul class="board">${COLS}${shown.map(row).join("")}</ul>
+    <div class="pager"><span>${ui.page * PAGE + 1}–${ui.page * PAGE + shown.length} of ${list.length}</span>
+      <div><button aria-label="Previous page" ${ui.page ? "" : "disabled"} onclick="page(-1)">${ICON.left}</button>
+      <button aria-label="Next page" ${ui.page < pages - 1 ? "" : "disabled"} onclick="page(1)">${ICON.right}</button></div></div>`
+    : `<div class="empty"><p>No bookings match. Try another name or filter.</p></div>`;
+  fit();
+}
+function fit() { document.querySelectorAll("textarea").forEach((t) => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 
-  const open = flagged.filter((g) => !g.outcome), sent = flagged.filter((g) => g.outcome === "sent").length,
-        left = flagged.filter((g) => g.outcome === "left").length, rejected = flagged.filter((g) => g.outcome === "rejected").length;
-  const tally = open.length ? `${flagged.length - open.length} decided · ${open.length} to go`
-    : `All ${flagged.length} decided: ${sent} sent, ${left} left${rejected ? `, ${rejected} rejected` : ""}.`;
-  const just = flagged.find((g) => g.id === lastId && g.outcome);   // keep the last decision in view
-  const shown = mode === "one" ? [just, open[0]].filter(Boolean) : flagged;
-  const seg = (m, label) => `<button aria-pressed="${mode === m}" onclick="setMode('${m}')">${label}</button>`;
-  $("#list").innerHTML = `<div class="bar"><span class="tally">${tally}</span>
-      <div class="seg" role="group" aria-label="Show guests">${seg("list", "List")}${seg("one", "One at a time")}</div></div>
-    ${shown.map(card).join("") || (mode === "one" ? `<div class="empty"><p class="lede">${tally}</p></div>` : "")}
-    <details><summary>The other ${rest.length} guests, under ${pct(day.line)}</summary><table>
-      ${rest.map((g) => `<tr><td>${esc(g.booking.guest)}</td><td>${when(g.booking.arrival)}</td><td>${pct(g.risk)}</td></tr>`).join("")}
-    </table></details>`;
+function render() {
+  $("#day").innerHTML = esc(day(data.day, {weekday: "short", day: "numeric", month: "short", year: "numeric"})) + SEP + "demo day";
+  if (!data.guests.length) {
+    $("#lede").innerHTML = `<h1>Good morning.</h1><p>Check the guests arriving in the next ${data.days_ahead} days. It takes a few seconds.</p>`;
+    $("#main").innerHTML = `<div class="empty"><button class="btn" onclick="runMorning(this)">Check this morning's guests</button><p class="err" id="morning-err"></p></div>`;
+    return;
+  }
+  $("#lede").innerHTML = lede();
+  const t = (id, label, n) => `<button role="tab" aria-selected="${ui.tab === id}" onclick="tab('${id}')">${label}<span class="n">${n}</span></button>`;
+  const c = (id, label) => `<button aria-pressed="${ui.filter === id}" onclick="filter('${id}')">${label}</button>`;
+  const tools = ui.tab === "bookings" ? `<div class="tools">
+      <label class="find">${ICON.search}<input type="search" placeholder="Find a guest" aria-label="Find a guest" value="${esc(ui.query)}" oninput="search(this.value)"></label>
+      <div class="chips" role="group" aria-label="Show">${c("all", "All")}${c("risk", "Might not show")}${c("decided", "Decided")}${c("later", "Later")}</div></div>` : "";
+  $("#main").innerHTML = `<div class="switch" role="tablist">${t("today", "Today", flagged().length)}${t("bookings", "Bookings", data.guests.length)}</div>
+    ${tools}<div id="board-slot"></div>`;
+  renderBoard();
 }
 
-load().catch(() => { $("#list").innerHTML = `<p class="error">Can't reach the desk. Start it with: .venv/bin/python -m noshow.app</p>`; });
+load().catch(() => { $("#lede").innerHTML = `<h1>Can't reach the desk.</h1><p>Start it with .venv/bin/python -m noshow.app, then reload.</p>`; });
 </script>
 </body>
 </html>

@@ -7,6 +7,9 @@ FREE_CANCEL_DAYS = 2   # motel policy: free cancellation until 2 days before arr
 def work_out_facts(b: dict) -> dict:
     arrival: date = b["arrival"]
     nights = int(b["stays_in_weekend_nights"] + b["stays_in_week_nights"])
+    free_until = arrival - timedelta(days=FREE_CANCEL_DAYS)
+    if b.get("today") and free_until < b["today"]:
+        free_until = None   # the window has closed: never offer a date that has passed
     return {
         "guest": b["guest"],
         "room": b["reserved_room_type"],
@@ -14,7 +17,7 @@ def work_out_facts(b: dict) -> dict:
         "departure": arrival + timedelta(days=nights),
         "nights": nights,
         "total": f"${b['adr'] * nights:,.2f}",
-        "free_cancel_until": arrival - timedelta(days=FREE_CANCEL_DAYS),
+        "free_cancel_until": free_until,
     }
 
 
@@ -26,5 +29,5 @@ def as_note(f: dict) -> str:
     """The facts as the drafting model sees them."""
     return (f"Guest: {f['guest']}\nRoom type: {f['room']}\n"
             f"Arrival: {spoken(f['arrival'])}\nDeparture: {spoken(f['departure'])}\n"
-            f"Nights: {f['nights']}\nTotal: {f['total']}\n"
-            f"Free cancellation until: {spoken(f['free_cancel_until'])}")
+            f"Nights: {f['nights']}\nTotal: {f['total']}"
+            + (f"\nFree cancellation until: {spoken(f['free_cancel_until'])}" if f["free_cancel_until"] else ""))

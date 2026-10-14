@@ -24,7 +24,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "data/desk.sqlite"
 OUTBOX = ROOT / "data/outbox.jsonl"
 RISKS = ROOT / "results/morning_risks.csv"   # 30 test mornings, every guest's score (scripts/eval_thresholds.py)
-DAY = os.getenv("DEMO_DAY", "2017-03-06")    # the data ends in 2017, so the demo motel lives on a fixed day
+# The data ends in 2017, so the demo motel lives on a fixed day: the earliest of the 30 test mornings that
+# flagged the average number of guests (7), with that morning's own sample, so the demo is a measured morning.
+DAY = os.getenv("DEMO_DAY", "2017-02-01")
+SEED = int(os.getenv("DEMO_SEED", "3"))
 HISTORY_ROWS, ROOMS, DAYS_AHEAD = 3000, 20, 3   # a 20-room motel with about 3,000 past bookings
 FLAG_LINE = 0.30   # owner's choice, 14 Oct; on 30 test mornings it flagged 3–13 guests a day, never none
 
@@ -58,7 +61,7 @@ def app(db: Path = DB, **kw):
     return build(**{"sender": mock_send, **kw}, checkpointer=SqliteSaver(sqlite3.connect(db, check_same_thread=False)))
 
 
-def morning(today: str, desk=None, seed: int = 0) -> list[dict]:
+def morning(today: str, desk=None, seed: int = SEED) -> list[dict]:
     """Score the next few days' arrivals and start one graph run per booking. Runs once per day."""
     desk = desk or app()
     if guests(today, desk):
@@ -79,7 +82,7 @@ def morning(today: str, desk=None, seed: int = 0) -> list[dict]:
 
     for i, ((idx, row), risk) in enumerate(zip(upcoming.iterrows(), risks)):
         name = NAMES[i % len(NAMES)]
-        booking = {"id": f"{today}-{idx}", "guest": name, "contact": contact(i, name),
+        booking = {"id": f"{today}-{idx}", "guest": name, "contact": contact(i, name), "today": day.date(),
                    "arrival": row.arrival.date(), "lead_time": int(row.lead_time),
                    "stays_in_weekend_nights": int(row.stays_in_weekend_nights),
                    "stays_in_week_nights": int(row.stays_in_week_nights),

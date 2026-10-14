@@ -7,10 +7,12 @@ from noshow.facts import FREE_CANCEL_DAYS, as_note
 
 MODEL = os.getenv("DRAFT_MODEL", "gemma4:e2b-it-qat")   # 4.3 GB build that fits an 8 GB Mac
 
-SYSTEM = ("You write one short text message from a small motel to a guest who has an upcoming booking. "
-          "Friendly and plain, under 60 words, no emojis. Mention the arrival and departure dates, the "
-          "number of nights, the total price and the last day they can cancel for free. Ask them to reply "
-          "YES to keep the room. Use only the details you are given. Write the message only.")
+SYSTEM = ("You write one short text message from a small motel to a guest arriving soon, asking them to "
+          "confirm they are still coming. Friendly and plain, under 60 words, no emojis. Start with their first "
+          "name. Mention the arrival and departure dates, the number of nights and the total price, and the last "
+          "day they can cancel for free if you are given one. Ask them to reply YES to keep the room, or to let us "
+          "know if their plans have changed so we can offer the room to someone else. Use only the details you "
+          "are given. Write the message only.")
 
 
 def facts_brief(facts: dict) -> str:

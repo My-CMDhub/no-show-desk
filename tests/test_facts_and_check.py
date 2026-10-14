@@ -1,7 +1,7 @@
 from datetime import date
 
 from noshow.check import check_draft
-from noshow.facts import work_out_facts
+from noshow.facts import as_note, work_out_facts
 
 BOOKING = {"arrival": date(2017, 3, 10), "stays_in_weekend_nights": 2, "stays_in_week_nights": 1,
            "adr": 95.5, "reserved_room_type": "A", "guest": "Ana Silva"}
@@ -73,3 +73,16 @@ def test_the_right_total_without_a_dollar_sign_counts_as_mentioned():
 
 def test_words_that_start_like_months_are_not_dates():
     assert draft(GOOD + " The 2 market stalls and 3 junior rooms are nearby.") == []
+
+
+def test_a_free_cancel_date_that_has_passed_is_left_out():
+    f = work_out_facts({**BOOKING, "today": date(2017, 3, 9)})        # arrives tomorrow; window closed on the 8th
+    assert f["free_cancel_until"] is None
+    assert "Free cancellation" not in as_note(f)
+    assert work_out_facts({**BOOKING, "today": date(2017, 3, 8)})["free_cancel_until"] == date(2017, 3, 8)
+
+
+def test_a_draft_offering_a_passed_free_cancel_date_fails():
+    f = work_out_facts({**BOOKING, "today": date(2017, 3, 9)})
+    problems = check_draft(GOOD, f)
+    assert problems == ["date 8 March is not arrival, departure or free-cancel date"]

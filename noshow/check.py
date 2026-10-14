@@ -39,7 +39,7 @@ def check_draft(text: str, facts: dict) -> list[str]:
     if not amounts and _money(total) not in {_money(n) for n in BARE_NUMBER.findall(text)}:
         problems.append(f"total {total} not mentioned")
 
-    allowed = {(d.day, d.month) for d in (facts["arrival"], facts["departure"], facts["free_cancel_until"])}
+    allowed = {(d.day, d.month) for d in (facts["arrival"], facts["departure"], facts["free_cancel_until"]) if d}
     for day, month in _dates(text):
         if (day, month) not in allowed:
             label = f"{day} {MONTHS[month - 1].title()}" if 1 <= month <= 12 else f"{month}/{day}"

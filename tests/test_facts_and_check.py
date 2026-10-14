@@ -86,3 +86,17 @@ def test_a_draft_offering_a_passed_free_cancel_date_fails():
     f = work_out_facts({**BOOKING, "today": date(2017, 3, 9)})
     problems = check_draft(GOOD, f)
     assert problems == ["date 8 March is not arrival, departure or free-cancel date"]
+
+
+def test_a_placeholder_left_in_the_draft_fails():
+    assert draft(GOOD.replace("Wednesday 8 March", "[Insert Date Here]")) == ["placeholder left in: [Insert Date Here]"]
+
+
+def test_instruction_text_copied_into_the_draft_fails():
+    assert draft(GOOD + " You can cancel for free if you are given one.") == ["instruction text copied in: 'you are given'"]
+
+
+def test_the_brief_asks_for_the_free_cancel_date_only_when_there_is_one():
+    from noshow.draft import facts_brief
+    assert "cancel for free" in facts_brief(work_out_facts(BOOKING))
+    assert "cancel" not in facts_brief(work_out_facts({**BOOKING, "today": date(2017, 3, 9)})).lower()

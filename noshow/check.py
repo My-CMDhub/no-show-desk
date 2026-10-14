@@ -13,6 +13,8 @@ AMOUNT = re.compile(r"\$\s?\d[\d,]*(?:\.\d{1,2})?")
 BARE_NUMBER = re.compile(r"(?<![\d$/.-])\d[\d,]*(?:\.\d{1,2})?(?![\d/])")
 WORDS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten "
                                     "eleven twelve thirteen fourteen".split())}
+PLACEHOLDER = re.compile(r"\[[^\]]*\]")
+INSTRUCTION_TEXT = ["you are given", "if there is one", "booking details provided", "write the message"]
 NIGHTS = re.compile(r"\b(\d+|" + "|".join(WORDS) + r")\s+nights?\b", re.I)
 
 
@@ -52,4 +54,6 @@ def check_draft(text: str, facts: dict) -> list[str]:
         said = int(n) if n.isdigit() else WORDS[n.lower()]
         if said != facts["nights"]:
             problems.append(f"says {said} nights, booking is {facts['nights']}")
+    problems += [f"placeholder left in: {p}" for p in PLACEHOLDER.findall(text)]
+    problems += [f"instruction text copied in: '{p}'" for p in INSTRUCTION_TEXT if p in text.lower()]
     return problems

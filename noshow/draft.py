@@ -9,15 +9,16 @@ MODEL = os.getenv("DRAFT_MODEL", "gemma4:e2b-it-qat")   # 4.3 GB build that fits
 
 SYSTEM = ("You write one short text message from a small motel to a guest arriving soon, asking them to "
           "confirm they are still coming. Friendly and plain, under 60 words, no emojis. Start with their first "
-          "name. Mention the arrival and departure dates, the number of nights and the total price, and the last "
-          "day they can cancel for free if you are given one. Ask them to reply YES to keep the room, or to let us "
-          "know if their plans have changed so we can offer the room to someone else. Use only the details you "
-          "are given. Write the message only.")
+          "name. Mention the arrival and departure dates, the number of nights and the total price. Ask them to "
+          "reply YES to keep the room, or to let us know if their plans have changed so we can offer the room to "
+          "someone else. Use only the booking details provided. Write the message only.")
 
 
 def facts_brief(facts: dict) -> str:
     """After: every date and amount already worked out in code."""
-    return "Booking details:\n" + as_note(facts)
+    # Code decides whether cancellation is mentioned at all; an "if there is one" in the prompt leaked into drafts.
+    ask = "\n\nAlso mention the last day they can cancel for free." if facts["free_cancel_until"] else ""
+    return "Booking details:\n" + as_note(facts) + ask
 
 
 def raw_brief(b: dict) -> str:

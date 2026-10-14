@@ -11,12 +11,24 @@ Every morning it scores a small motel's upcoming bookings and lists the guests w
 
 ## Run it
 
+Needs Python 3.12, [Ollama](https://ollama.com) and about 6 GB of free disk. Tested on an 8 GB M2 Mac.
+
 ```bash
-ollama pull gemma4:e2b-it-qat
-.venv/bin/python -m noshow.app      # page at http://localhost:8000, plus the Telegram bot and 08:00 ping
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
+ollama pull gemma4:e2b-it-qat                      # 4.3 GB; the model that writes the messages
+cp .env.example .env                                # then add your TabPFN key (Telegram is optional)
 ```
 
-`.env` needs `TABPFN_API_KEY`; Telegram also needs `TELEGRAM_BOT_TOKEN` and `TELEGRAM_OWNER_ID` (optional: `MORNING_AT`, `DEMO_DAY`, `PAGE_URL`). Tests: `.venv/bin/python -m pytest -q`.
+Download `hotels.csv` from the [Hotel booking demand](https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand) dataset into `data/raw/hotels.csv` (the tests and the desk read it from there). Then:
+
+```bash
+.venv/bin/python -m pytest -q                       # 49 tests
+.venv/bin/python -m noshow.app                      # page at http://localhost:8000, plus the Telegram bot and 08:00 ping
+```
+
+Every number in `results/` comes from a script in `scripts/` (for example `.venv/bin/python scripts/eval_thresholds.py`).
+
+**Gemma in the browser (spike):** download `gemma-4-E2B-it-web.litertlm` (2.0 GB) from [litert-community/gemma-4-E2B-it-litert-lm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) into `data/models/`, stop Ollama's model, run `.venv/bin/python -m spike.server` and open http://localhost:8001 in a browser with WebGPU. Result: `results/drafts_browser_spike.md`.
 
 ## What is real and what is a demo
 
@@ -32,5 +44,7 @@ ollama pull gemma4:e2b-it-qat
 - **Sending is a mock**, and the money is the hotels' own prices shown as dollars.
 
 Data: [Hotel booking demand](https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand) (Antonio, Almeida & Nunes, *Data in Brief* 22, 2019; CC BY 4.0). Two Portuguese hotels, not motels.
+
+Code: MIT licence (`LICENSE`). Font: Overpass, SIL Open Font Licence (`noshow/fonts/OFL.txt`).
 
 Work in progress for the DEV Hacktoberfest 2026 "Side Hustle" challenge.

@@ -64,4 +64,4 @@ def act(thread: str, action: str, request: Request, edit: Edit | None = None):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(api, host="127.0.0.1", port=int(os.getenv("PORT", 8000)))
+    uvicorn.run(api, host="127.0.0.1", port=int(os.getenv("PORT", "8000")))

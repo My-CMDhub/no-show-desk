@@ -1,25 +1,16 @@
-"""Telegram: the owner's side of the desk. /morning runs the desk; each flagged guest arrives as a
-card with Approve / Edit / Reject. A button press resumes that booking's paused graph run.
-
-Run: .venv/bin/python -m noshow.bot   then send /start to your bot.
-Nothing is ever sent to a guest: an approved message goes to the outbox file only.
+"""Telegram: the morning ping. At MORNING_AT each day (and on /morning) the owner gets one message
+listing the guests at or over the line, each with their top reason, and a link to the page where
+they press Draft or Leave. Started by noshow.app. Nothing is ever sent to a guest from here.
 """
 import asyncio
-import json
+import logging
 import os
-from pathlib import Path
+from datetime import datetime, timedelta
 
-from dotenv import load_dotenv
-from langgraph.types import Command
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, ContextTypes,
-                          MessageHandler, filters)
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 from noshow import desk
-
-ROOT = Path(__file__).resolve().parents[1]
-OUTBOX = ROOT / "data/outbox.jsonl"
-DEMO_DAY = os.getenv("DEMO_DAY", "2017-03-06")
 
 
 def owner_id() -> int | None:
@@ -33,84 +24,77 @@ def is_owner(update: Update) -> bool:
     return bool(user and chat and chat.type == "private" and user.id == owner_id())
 
 
-def card(w: dict) -> tuple[str, InlineKeyboardMarkup]:
-    flag = ("\n\n⚠️ Check failed: " + "; ".join(w["problems"])) if w["problems"] else ""
-    text = f"{w['guest']} · cancel risk {w['risk']:.0%}\n\n{w['draft']}{flag}"
-    buttons = [[InlineKeyboardButton("Approve", callback_data=f"approve|{w['id']}"),
-                InlineKeyboardButton("Edit", callback_data=f"edit|{w['id']}"),
-                InlineKeyboardButton("Reject", callback_data=f"reject|{w['id']}")]]
-    return text, InlineKeyboardMarkup(buttons)
+def summary(guests: list[dict], line: float, url: str) -> str:
+    flagged = [g for g in guests if g["flagged"]]
+    if not flagged:
+        return f"Good morning. None of the {len(guests)} arriving guests is {line:.0%} or more likely to cancel. {url}"
+    rows = []
+    for g in flagged:
+        b, a = g["booking"], g["booking"]["arrival"]
+        row = f"• {b['guest']}, {g['risk']:.0%}, arrives {a:%a} {a.day} {a:%b}"
+        if g["reasons"]:
+            r = g["reasons"][0]
+            row += f". {r['label']} ({r['rate']:.0%} of similar past guests cancelled)"
+        rows.append(row)
+    verb = "is" if len(flagged) == 1 else "are"
+    return (f"Good morning. {len(flagged)} of {len(guests)} arriving guests {verb} {line:.0%} or more likely "
+            f"to cancel:\n\n" + "\n".join(rows) + f"\n\nDraft a message or leave each one: {url}")
 
 
-def resume(thread: str, answer) -> dict:
-    out = desk.app().invoke(Command(resume=answer), {"configurable": {"thread_id": thread}})
-    if out.get("final"):
-        with OUTBOX.open("a") as f:
-            f.write(json.dumps({"id": thread, "guest": out["booking"]["guest"], "text": out["final"]}) + "\n")
-    return out
+def seconds_until(hhmm: str, now: datetime) -> float:
+    h, m = map(int, hhmm.split(":"))
+    at = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    return ((at if at > now else at + timedelta(days=1)) - now).total_seconds()
 
 
-async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+async def todays_summary(app: Application) -> str:
+    guests = await asyncio.to_thread(desk.morning, desk.DAY, app.bot_data["desk"])
+    return summary(guests, desk.FLAG_LINE, os.getenv("PAGE_URL", "http://localhost:8000"))
+
+
+async def hello(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if owner_id() is None and update.effective_chat.type == "private":
         await update.message.reply_text(f"Your Telegram user id is {update.effective_user.id}. Add "
-                                        f"TELEGRAM_OWNER_ID={update.effective_user.id} to .env and restart the bot.")
+                                        f"TELEGRAM_OWNER_ID={update.effective_user.id} to .env and restart.")
         return
-    if not is_owner(update):
-        return
-    await update.message.reply_text("No-Show Desk is ready. Send /morning to check upcoming bookings.")
+    if is_owner(update):
+        await update.message.reply_text("No-Show Desk is ready. You'll get a summary each morning; "
+                                        "send /morning for one now.")
 
 
 async def morning(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not is_owner(update):
         return
-    await update.message.reply_text(f"Checking bookings arriving in the {desk.DAYS_AHEAD} days from {DEMO_DAY}…")
-    results = await asyncio.to_thread(desk.morning, DEMO_DAY)
-    flagged = sum(r["paused"] for r in results)
-    await update.message.reply_text(f"{len(results)} bookings checked, {flagged} need a message from you.")
-    for w in await asyncio.to_thread(desk.pending):
-        text, kb = card(w)
-        await update.message.reply_text(text, reply_markup=kb)
+    await update.message.reply_text(f"Checking guests arriving in the {desk.DAYS_AHEAD} days from {desk.DAY}…")
+    await update.message.reply_text(await todays_summary(ctx.application))
 
 
-async def button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    if not is_owner(update):
-        await q.answer()
-        return
-    await q.answer()
-    action, thread = q.data.split("|", 1)
-    if action == "edit":
-        ctx.user_data["editing"] = thread
-        await q.message.reply_text("Send the message as you want it to read.")
-        return
-    await asyncio.to_thread(resume, thread, action)
-    verdict = "Saved to outbox ✓" if action == "approve" else "Rejected, nothing saved"
-    await q.edit_message_text(f"{q.message.text}\n\n— {verdict}")
+async def daily(app: Application):
+    while True:
+        await asyncio.sleep(seconds_until(os.getenv("MORNING_AT", "08:00"), datetime.now()))
+        try:
+            if owner_id():
+                await app.bot.send_message(owner_id(), await todays_summary(app))
+        except Exception:   # a failed ping must not stop tomorrow's
+            logging.exception("morning ping failed")
 
 
-async def edited(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if not is_owner(update):
-        return
-    thread = ctx.user_data.pop("editing", None)
-    if not thread:
-        return
-    await asyncio.to_thread(resume, thread, {"decision": "edit", "text": update.message.text})
-    await update.message.reply_text("Your version is saved to the outbox ✓")
+async def start(graph):
+    """Start polling and the daily ping inside the app's event loop. Returns a stop function."""
+    app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"]).build()
+    app.bot_data["desk"] = graph
+    app.add_handler(CommandHandler("start", hello))
+    app.add_handler(CommandHandler("morning", morning))
+    await app.initialize()
+    await app.bot.set_my_commands([("start", "Connect the desk to you"),
+                                   ("morning", "Today's guests likely to cancel")])
+    await app.start()
+    await app.updater.start_polling()
+    timer = asyncio.create_task(daily(app))
 
-
-def main():
-    load_dotenv(ROOT / ".env")
-    async def menu(app):   # shows /start and /morning in Telegram's command menu
-        await app.bot.set_my_commands([("start", "Connect the desk to you"),
-                                       ("morning", "Check upcoming bookings and draft messages")])
-
-    bot = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"]).post_init(menu).build()
-    bot.add_handler(CommandHandler("start", start))
-    bot.add_handler(CommandHandler("morning", morning))
-    bot.add_handler(CallbackQueryHandler(button))
-    bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, edited))
-    bot.run_polling()
-
-
-if __name__ == "__main__":
-    main()
+    async def stop():
+        timer.cancel()
+        await app.updater.stop()
+        await app.stop()
+        await app.shutdown()
+    return stop

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Browser Gemma spike</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; background: #F4F5F2; color: #15191C; }
+  table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+  td, th { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid #DADEDB; }
+  .bad { color: #9A3B12; } .ok { color: #1F7A5A; }
+  #status { font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Browser Gemma spike</h1>
+<p id="status">Starting…</p>
+<button id="go" disabled>Run 20 drafts</button>
+<table><thead><tr><th>#</th><th>secs</th><th>check</th><th>draft</th></tr></thead><tbody id="rows"></tbody></table>
+<script type="module">
+import { Engine } from "https://cdn.jsdelivr.net/npm/@litert-lm/core@0.18.0/+esm";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
+window.spike = {done: 0, wrong: 0, loadSecs: null, error: null};
+try {
+  if (!navigator.gpu) throw new Error("No WebGPU in this browser");
+  const {system, briefs} = await (await fetch("/briefs")).json();
+  $("#status").textContent = "Loading Gemma 4 E2B (2.0 GB) onto the GPU…";
+  const t0 = performance.now();
+  const engine = await Engine.create({model: "/model"});
+  spike.loadSecs = +((performance.now() - t0) / 1000).toFixed(1);
+  $("#status").textContent = `Model loaded in ${spike.loadSecs} s.`;
+  $("#go").disabled = false;
+  $("#go").onclick = async () => {
+    $("#go").disabled = true;
+    for (const b of briefs) {   // one at a time: one model job on an 8 GB Mac
+      const seed = 1;
+      const chat = await engine.createConversation({
+        preface: {messages: [{role: "system", content: system}]},
+        sessionConfig: {samplerParams: {type: 2, temperature: 0.7, p: 0.95, k: 64, seed}},   // Ollama's Gemma defaults
+      });
+      const t = performance.now();
+      const reply = await chat.sendMessage(b.brief);
+      const secs = +((performance.now() - t) / 1000).toFixed(2);
+      await chat.delete();
+      const draft = reply.content.filter((c) => c.type === "text").map((c) => c.text).join("").trim();
+      const {problems} = await (await fetch("/check", {method: "POST", headers: {"content-type": "application/json"},
+        body: JSON.stringify({i: b.i, seed, draft, secs})})).json();
+      spike.done++; if (problems.length) spike.wrong++;
+      $("#rows").insertAdjacentHTML("beforeend", `<tr><td>${b.i}</td><td>${secs}</td>
+        <td class="${problems.length ? "bad" : "ok"}">${problems.length ? esc(problems.join("; ")) : "ok"}</td><td>${esc(draft)}</td></tr>`);
+      $("#status").textContent = `${spike.done} of ${briefs.length} drafted, ${spike.wrong} with a wrong or missing fact.`;
+    }
+  };
+} catch (e) {
+  spike.error = String(e && e.message || e);
+  $("#status").textContent = "Failed: " + spike.error;
+}
+</script>
+</body>
+</html>

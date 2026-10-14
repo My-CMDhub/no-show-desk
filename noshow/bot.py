@@ -18,17 +18,19 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler, Con
 from noshow import desk
 
 ROOT = Path(__file__).resolve().parents[1]
-OWNER = ROOT / "data/owner.json"       # the first chat to send /start becomes the owner
 OUTBOX = ROOT / "data/outbox.jsonl"
 DEMO_DAY = os.getenv("DEMO_DAY", "2017-03-06")
 
 
 def owner_id() -> int | None:
-    return json.loads(OWNER.read_text())["chat_id"] if OWNER.exists() else None
+    """The owner is pinned in .env, never claimed by whoever messages the bot first."""
+    raw = os.getenv("TELEGRAM_OWNER_ID", "")
+    return int(raw) if raw.isdigit() else None
 
 
 def is_owner(update: Update) -> bool:
-    return update.effective_chat.id == owner_id()
+    user, chat = update.effective_user, update.effective_chat
+    return bool(user and chat and chat.type == "private" and user.id == owner_id())
 
 
 def card(w: dict) -> tuple[str, InlineKeyboardMarkup]:
@@ -49,9 +51,10 @@ def resume(thread: str, answer) -> dict:
 
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if owner_id() is None:
-        OWNER.parent.mkdir(exist_ok=True)
-        OWNER.write_text(json.dumps({"chat_id": update.effective_chat.id}))
+    if owner_id() is None and update.effective_chat.type == "private":
+        await update.message.reply_text(f"Your Telegram user id is {update.effective_user.id}. Add "
+                                        f"TELEGRAM_OWNER_ID={update.effective_user.id} to .env and restart the bot.")
+        return
     if not is_owner(update):
         return
     await update.message.reply_text("No-Show Desk is ready. Send /morning to check upcoming bookings.")
@@ -71,9 +74,10 @@ async def morning(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
-    await q.answer()
     if not is_owner(update):
+        await q.answer()
         return
+    await q.answer()
     action, thread = q.data.split("|", 1)
     if action == "edit":
         ctx.user_data["editing"] = thread
@@ -85,8 +89,10 @@ async def button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 async def edited(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not is_owner(update):
+        return
     thread = ctx.user_data.pop("editing", None)
-    if not is_owner(update) or not thread:
+    if not thread:
         return
     await asyncio.to_thread(resume, thread, {"decision": "edit", "text": update.message.text})
     await update.message.reply_text("Your version is saved to the outbox ✓")

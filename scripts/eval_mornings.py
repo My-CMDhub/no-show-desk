@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from noshow.data import FEATURES, TARGET, load  # noqa: E402
-from noshow.desk import DAYS_AHEAD, FLAG_TOP, HISTORY_ROWS, ROOMS  # noqa: E402
+from noshow.desk import DAYS_AHEAD, HISTORY_ROWS, ROOMS  # noqa: E402
+FLAG_TOP = 5   # the earlier rule, kept for comparison: message the 5 riskiest each morning
 
 load_dotenv(ROOT / ".env")
 from tabpfn_client import TabPFNClassifier, set_access_token  # noqa: E402

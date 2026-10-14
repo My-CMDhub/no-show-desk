@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No-Show Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F2F4F1; --card: #FFFFFF; --ink: #18211F; --muted: #5F6B67; --line: #D9DFDB;
+    --pool: #0F6E68; --pool-ink: #FFFFFF; --tag: #E2683C; --tag-ink: #FFFFFF; --done: #A9B3AF;
+    --ok: #2F7D4F; --warn: #A3461F; --demo: #E6E9E7;
+    --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+    --body: "Public Sans", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #121816; --card: #1A2220; --ink: #E8EEEB; --muted: #9AA7A2; --line: #2A3532;
+      --pool: #4FB3A9; --pool-ink: #0C1312; --tag: #F0875C; --tag-ink: #1A0E08; --done: #3E4A47;
+      --ok: #6CC08E; --warn: #F0A27E; --demo: #26302D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #121816; --card: #1A2220; --ink: #E8EEEB; --muted: #9AA7A2; --line: #2A3532;
+    --pool: #4FB3A9; --pool-ink: #0C1312; --tag: #F0875C; --tag-ink: #1A0E08; --done: #3E4A47;
+    --ok: #6CC08E; --warn: #F0A27E; --demo: #26302D;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.5 var(--body); }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  button { font: inherit; cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--pool); outline-offset: 2px; }
+
+  /* header */
+  .brand { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .day { margin: 4px 0 0; font-size: 15px; color: var(--muted); }
+  h1 { margin: 20px 0 8px; font: 800 clamp(40px, 9vw, 64px)/0.95 var(--display); letter-spacing: .005em; }
+  h1 .of { color: var(--muted); font-weight: 600; }
+  .lede { margin: 0 0 16px; font-size: 18px; max-width: 34em; }
+  .roi { margin: 0; padding: 12px 14px; border-left: 3px solid var(--tag); background: var(--card);
+         font-size: 14px; color: var(--muted); max-width: 40em; }
+  .roi b { color: var(--ink); font-weight: 600; }
+
+  /* toolbar */
+  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+         margin: 32px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .tally { font-size: 14px; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; font-size: 14px; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+  /* guest card */
+  .guest { display: grid; grid-template-columns: 72px 1fr; gap: 20px; padding: 20px; margin-bottom: 14px;
+           background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .tag { position: relative; width: 64px; height: 118px; display: grid; place-items: end center; padding-bottom: 16px;
+         background: var(--tag); color: var(--tag-ink);
+         clip-path: polygon(50% 0, 100% 16%, 100% 84%, 50% 100%, 0 84%, 0 16%);
+         -webkit-mask: radial-gradient(circle at 50% 22px, transparent 6px, #000 6.5px);
+                 mask: radial-gradient(circle at 50% 22px, transparent 6px, #000 6.5px); }
+  .tag b { font: 800 30px/1 var(--display); }
+  .tag small { position: absolute; top: 34px; font: 600 10px/1 var(--body); letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+  .guest.closed .tag { background: var(--done); color: var(--ink); }
+  h2 { margin: 0; font-size: 21px; font-weight: 600; line-height: 1.25; }
+  .stay { margin: 2px 0 0; font-size: 15px; }
+  .meta { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+  .why { margin: 16px 0 0; }
+  .why h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .why ul { margin: 0; padding-left: 18px; font-size: 15px; }
+  .why li + li { margin-top: 4px; }
+  .why li b { font-weight: 600; }
+  .why p { margin: 0; font-size: 15px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .primary, .quiet { border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 15px; }
+  .primary { border: 1px solid var(--pool); background: var(--pool); color: var(--pool-ink); }
+  .quiet { border: 1px solid var(--line); background: transparent; color: var(--ink); }
+  .primary:disabled, .quiet:disabled { opacity: .55; cursor: wait; }
+
+  /* draft */
+  textarea { width: 100%; margin-top: 16px; padding: 12px; min-height: 120px; resize: vertical;
+             font: 400 15px/1.5 var(--body); color: var(--ink); background: var(--paper);
+             border: 1px solid var(--line); border-radius: 8px; }
+  .verdict { margin: 8px 0 0; font-size: 14px; }
+  .verdict.ok { color: var(--ok); }
+  .verdict.warn { color: var(--warn); }
+  .progress { margin-top: 16px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--pool); animation: fill 35s linear forwards; }
+  @keyframes fill { to { width: 92%; } }
+  .note { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+  /* outcome */
+  .outcome { margin-top: 16px; font-size: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  .outcome .sent { color: var(--ok); font-weight: 600; }
+  .demo { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--demo); color: var(--muted); }
+  blockquote { margin: 10px 0 0; padding-left: 12px; border-left: 2px solid var(--line); color: var(--muted); font-size: 14px; }
+
+  /* the rest of the day */
+  details { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
+  summary { cursor: pointer; font-size: 15px; color: var(--muted); }
+  table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  td { padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  td:last-child { text-align: right; color: var(--muted); }
+
+  .empty { padding: 32px 20px; background: var(--card); border: 1px dashed var(--line); border-radius: 12px; }
+  .error { color: var(--warn); font-size: 14px; margin-top: 10px; }
+  .foot { margin-top: 40px; font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 520px) {
+    .guest { grid-template-columns: 1fr; gap: 12px; }
+    .tag { width: 150px; height: 52px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 22px 0 0;
+           clip-path: polygon(0 50%, 14% 0, 86% 0, 100% 50%, 86% 100%, 14% 100%);
+           -webkit-mask: radial-gradient(circle at 22px 50%, transparent 6px, #000 6.5px);
+                   mask: radial-gradient(circle at 22px 50%, transparent 6px, #000 6.5px); }
+    .tag b { font-size: 26px; }
+    .tag small { position: static; }
+  }
+  @media (prefers-reduced-motion: reduce) { .progress i { animation: none; width: 60%; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">No-Show Desk</div>
+    <p class="day" id="day"></p>
+    <div id="top"></div>
+  </header>
+  <div id="list" aria-live="polite"></div>
+  <p class="foot">Demo motel: real 2017 bookings from two Portuguese hotels (Antonio, Almeida &amp; Nunes, 2019); guest names and contacts are made up.
+    Risk from TabPFN, drafts from Gemma running on this computer. Nothing is sent to anyone.</p>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const pct = (x) => Math.round(x * 100) + "%";
+const when = (iso, opts = {weekday: "short", day: "numeric", month: "short"}) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-AU", opts);
+};
+let day = null, busy = {}, errors = {}, lastId = null;
+let mode = (() => { try { return localStorage.getItem("mode") || "list"; } catch { return "list"; } })();
+
+async function load() {
+  const r = await fetch("/api/day");
+  day = await r.json();
+  render();
+}
+
+async function runMorning(btn) {
+  btn.disabled = true; btn.textContent = "Checking guests…";
+  const r = await fetch("/api/morning", {method: "POST"});
+  if (r.ok) { day = await r.json(); render(); }
+  else { btn.disabled = false; btn.textContent = "Check this morning's guests"; $("#morning-error").textContent = "The check didn't finish. Is the internet on? TabPFN scores bookings online."; }
+}
+
+async function act(id, action) {
+  const card = document.getElementById(id);
+  const body = action === "send" ? JSON.stringify({text: card.querySelector("textarea").value}) : undefined;
+  busy[id] = action; lastId = id; delete errors[id]; render();
+  try {
+    const r = await fetch(`/api/guests/${encodeURIComponent(id)}/${action}`,
+                          {method: "POST", headers: {"content-type": "application/json"}, body});
+    if (r.ok) { const g = await r.json(); day.guests = day.guests.map((x) => x.id === id ? g : x); }
+    else if (r.status === 409) { await load(); errors[id] = "This guest was already decided on another screen. Showing where it stands now."; }
+    else errors[id] = action === "draft" ? "The draft didn't finish. Check that Ollama is running, then try again." : "That didn't go through. Try again.";
+  } catch { errors[id] = "Lost contact with the desk. Is it still running?"; }
+  delete busy[id]; render();
+}
+
+function setMode(m) {
+  mode = m; try { localStorage.setItem("mode", m); } catch {}
+  render();
+}
+
+function reasons(g) {
+  if (!g.reasons.length) return `<p>No single factor stands out; the score comes from the combination.</p>`;
+  return `<ul>${g.reasons.map((r) => `<li><b>${esc(r.label)}.</b> ${pct(r.rate)} of ${esc(r.who)} cancelled (all past guests: ${pct(r.base)}).</li>`).join("")}</ul>`;
+}
+
+function body(g) {
+  const b = g.booking, how = b.contact.channel === "email" ? "email" : "WhatsApp";
+  if (busy[g.id] === "draft") return `<div class="progress" role="progressbar" aria-label="Drafting"><i></i></div>
+    <p class="note">Gemma is writing the message on this computer. About 30 seconds.</p>`;
+  if (g.outcome === "left") return `<div class="outcome">Left: no message needed.</div>`;
+  if (g.outcome === "rejected") return `<div class="outcome">Draft rejected. Nothing sent.</div>`;
+  if (g.outcome === "sent") return `<div class="outcome"><span class="sent">Sent by ${esc(g.sent.channel)} to ${esc(g.sent.to)} · ${esc(g.sent.at)}</span>
+      <span class="demo">demo: not delivered</span></div><blockquote>${esc(g.final)}</blockquote>`;
+  const off = busy[g.id] ? "disabled" : "";
+  if (g.stage === "review") {
+    const v = g.problems.length
+      ? `<p class="verdict warn">Check before sending: ${g.problems.map(esc).join("; ")}.</p>`
+      : `<p class="verdict ok">Dates, nights and total match the booking.</p>`;
+    return `<label class="note" for="t-${g.id}">Message to ${esc(b.guest)} (you can edit it)</label>
+      <textarea id="t-${g.id}">${esc(g.draft)}</textarea>${v}
+      <div class="actions"><button class="primary" ${off} onclick="act('${g.id}','send')">Send by ${how}</button>
+      <button class="quiet" ${off} onclick="act('${g.id}','reject')">Reject draft</button></div>`;
+  }
+  return `<div class="actions"><button class="primary" ${off} onclick="act('${g.id}','draft')">Draft a message</button>
+    <button class="quiet" ${off} onclick="act('${g.id}','leave')">Leave</button></div>`;
+}
+
+function card(g) {
+  const b = g.booking, f = g.facts, closed = g.outcome ? " closed" : "";
+  const party = `${b.adults} adult${b.adults === 1 ? "" : "s"}${b.children ? `, ${b.children} child${b.children === 1 ? "" : "ren"}` : ""}`;
+  const before = b.previous_cancellations ? ` · cancelled ${b.previous_cancellations} before` : (b.is_repeated_guest ? " · stayed before" : "");
+  return `<article class="guest${closed}" id="${g.id}">
+    <div class="tag" aria-label="Cancel risk ${pct(g.risk)}"><small>risk</small><b>${pct(g.risk)}</b></div>
+    <div>
+      <h2>${esc(b.guest)}</h2>
+      <p class="stay">Arrives ${when(b.arrival)} · ${f.nights} night${f.nights === 1 ? "" : "s"} · ${esc(f.total)} · room ${esc(b.reserved_room_type)}</p>
+      <p class="meta">Booked ${b.lead_time} days ahead via ${esc(g.via)} · ${party}${before} · ${esc(b.contact.to)}</p>
+      <section class="why"><h3>Why flagged</h3>${reasons(g)}</section>
+      ${body(g)}
+      ${errors[g.id] ? `<p class="error" role="alert">${esc(errors[g.id])}</p>` : ""}
+    </div></article>`;
+}
+
+function render() {
+  $("#day").textContent = when(day.day, {weekday: "long", day: "numeric", month: "long", year: "numeric"}) + " · demo day";
+  const flagged = day.guests.filter((g) => g.flagged), rest = day.guests.filter((g) => !g.flagged);
+  const r = day.roi;
+  if (!day.guests.length) {
+    $("#top").innerHTML = `<h1>Good morning.</h1>`;
+    $("#list").innerHTML = `<div class="empty"><p class="lede">This morning's check hasn't run yet. It scores the guests arriving in the next three days and lists the ones likely to cancel.</p>
+      <button class="primary" onclick="runMorning(this)">Check this morning's guests</button><p class="error" id="morning-error"></p></div>`;
+    return;
+  }
+  $("#top").innerHTML = `<h1>${flagged.length} <span class="of">of ${day.guests.length}</span></h1>
+    <p class="lede">guests arriving in the next three days are ${pct(day.line)} or more likely to cancel.
+      A short message asking them to confirm lets you find out early and resell the room.</p>
+    <p class="roi">On ${r.mornings} test mornings from 2017, this line flagged about <b>${r.per_morning} guests a day</b>.
+      ${pct(r.share_cancelled)} of them did cancel: about <b>${r.caught_per_morning} rooms a morning</b> you'd hear about days early
+      instead of on the night. From past bookings, not a live motel.</p>`;
+
+  const open = flagged.filter((g) => !g.outcome), sent = flagged.filter((g) => g.outcome === "sent").length,
+        left = flagged.filter((g) => g.outcome === "left").length, rejected = flagged.filter((g) => g.outcome === "rejected").length;
+  const tally = open.length ? `${flagged.length - open.length} decided · ${open.length} to go`
+    : `All ${flagged.length} decided: ${sent} sent, ${left} left${rejected ? `, ${rejected} rejected` : ""}.`;
+  const just = flagged.find((g) => g.id === lastId && g.outcome);   // keep the last decision in view
+  const shown = mode === "one" ? [just, open[0]].filter(Boolean) : flagged;
+  const seg = (m, label) => `<button aria-pressed="${mode === m}" onclick="setMode('${m}')">${label}</button>`;
+  $("#list").innerHTML = `<div class="bar"><span class="tally">${tally}</span>
+      <div class="seg" role="group" aria-label="Show guests">${seg("list", "List")}${seg("one", "One at a time")}</div></div>
+    ${shown.map(card).join("") || (mode === "one" ? `<div class="empty"><p class="lede">${tally}</p></div>` : "")}
+    <details><summary>The other ${rest.length} guests, under ${pct(day.line)}</summary><table>
+      ${rest.map((g) => `<tr><td>${esc(g.booking.guest)}</td><td>${when(g.booking.arrival)}</td><td>${pct(g.risk)}</td></tr>`).join("")}
+    </table></details>`;
+}
+
+load().catch(() => { $("#list").innerHTML = `<p class="error">Can't reach the desk. Start it with: .venv/bin/python -m noshow.app</p>`; });
+</script>
+</body>
+</html>

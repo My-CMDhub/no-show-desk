@@ -38,7 +38,7 @@ class Edit(BaseModel):
 
 @api.get("/")
 def page():
-    return FileResponse(PAGE)
+    return FileResponse(PAGE, headers={"Cache-Control": "no-cache"})
 
 
 @api.get("/api/day")

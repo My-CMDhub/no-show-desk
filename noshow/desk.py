@@ -17,7 +17,8 @@ from langgraph.types import Command
 
 from noshow.data import FEATURES, TARGET, load
 from noshow.graph import build
-from noshow.reasons import reasons
+from noshow.facts import work_out_facts
+from noshow.reasons import CHANNELS, reasons
 
 ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "data/desk.sqlite"
@@ -104,7 +105,11 @@ def guests(today: str, desk=None) -> list[dict]:
 
 def guest(thread: str, desk) -> dict:
     snap = desk.get_state({"configurable": {"thread_id": thread}})
-    return {"id": thread, "stage": snap.interrupts[0].value["stage"] if snap.interrupts else None, **snap.values}
+    g = {"id": thread, "stage": snap.interrupts[0].value["stage"] if snap.interrupts else None, **snap.values}
+    if "booking" in g:   # nights, total and channel for the page, worked out here rather than in the browser
+        g.setdefault("facts", work_out_facts(g["booking"]))
+        g["via"] = CHANNELS.get(g["booking"].get("channel"), g["booking"].get("channel"))
+    return g
 
 
 def act(thread: str, action: str, text: str | None = None, desk=None) -> dict:

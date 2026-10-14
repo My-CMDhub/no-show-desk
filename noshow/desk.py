@@ -8,6 +8,7 @@ import os
 from functools import lru_cache
 import sqlite3
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
 
+from noshow.check import check_draft
 from noshow.data import FEATURES, TARGET, load
 from noshow.graph import build
 from noshow.facts import work_out_facts
@@ -44,6 +46,14 @@ NAMES = ["Ana Silva", "Ben Carter", "Chloe Nguyen", "Daniel Okafor", "Elena Ross
          "Victor Hugo Ruiz", "Wren Clarke", "Ximena Soto", "Yusuf Demir", "Zara Hale"]
 FICTION_NUMBERS = ["006", "156", "157", "158", "159", "110", "313", "737", "808"]   # ACMA: 0491 570 xxx is for fiction
 ACTION_STAGE = {"draft": "choose", "leave": "choose", "send": "review", "reject": "review"}
+_LOCKS: dict[str, threading.Lock] = {}   # one per guest: two taps, tabs or phones can't both act on one run
+
+
+class NeedsOwner(Exception):
+    """The owner's own text has a problem; they must fix it or say send anyway."""
+    def __init__(self, problems: list[str]):
+        super().__init__("; ".join(problems))
+        self.problems = problems
 
 
 def contact(i: int, name: str) -> dict:
@@ -83,7 +93,8 @@ def morning(today: str, desk=None, seed: int = SEED) -> list[dict]:
     upcoming = no_deposit[(no_deposit.arrival >= day) & (no_deposit.arrival < day + pd.Timedelta(days=DAYS_AHEAD))
                           ].sample(ROOMS, random_state=seed)   # the measured morning (scripts/eval_thresholds.py)
     later = no_deposit[(no_deposit.arrival >= day + pd.Timedelta(days=DAYS_AHEAD))
-                       & (no_deposit.arrival < day + pd.Timedelta(days=LATER_DAYS))].sample(LATER, random_state=seed)
+                       & (no_deposit.arrival < day + pd.Timedelta(days=LATER_DAYS))
+                       & (no_deposit.adr >= 20)].sample(LATER, random_state=seed)   # no complimentary $0 stays
     both = pd.concat([upcoming, later])
 
     model = TabPFNClassifier()
@@ -125,14 +136,33 @@ def guest(thread: str, desk) -> dict:
     return g
 
 
-def act(thread: str, action: str, text: str | None = None, desk=None) -> dict:
-    """Resume a paused run with the owner's choice. Refuses a choice the run isn't waiting for."""
+def act(thread: str, action: str, text: str | None = None, desk=None, anyway: bool = False) -> dict:
+    """Resume a paused run with the owner's choice. Refuses a choice the run isn't waiting for, and checks
+    the owner's own wording the same way the model's draft was checked."""
     desk = desk or app()
-    if ACTION_STAGE.get(action) is None or guest(thread, desk)["stage"] != ACTION_STAGE[action]:
-        raise ValueError(f"{thread} is not waiting for {action!r}")
-    answer = {"decision": "send", "text": text} if action == "send" and text else action
-    desk.invoke(Command(resume=answer), {"configurable": {"thread_id": thread}})
-    return guest(thread, desk)
+    with _LOCKS.setdefault(thread, threading.Lock()):
+        g = guest(thread, desk)
+        if ACTION_STAGE.get(action) is None or g["stage"] != ACTION_STAGE[action]:
+            raise ValueError(f"{thread} is not waiting for {action!r}")
+        if action == "send" and text is not None:
+            text = text.strip()
+            if not text:
+                raise NeedsOwner(["the message is empty"])
+            problems = check_draft(text, g["facts"])
+            if problems and not anyway:
+                raise NeedsOwner(problems)
+        answer = {"decision": "send", "text": text} if action == "send" and text else action
+        desk.invoke(Command(resume=answer), {"configurable": {"thread_id": thread}})
+        return guest(thread, desk)
+
+
+def shared_reasons(day_guests: list[dict]) -> list[dict]:
+    """Reasons every flagged guest has: said once for the morning, not repeated on each guest."""
+    flagged = [g for g in day_guests if g.get("flagged")]
+    if len(flagged) < 2:
+        return []
+    return [r for r in flagged[0]["reasons"]
+            if all(r["label"] in {x["label"] for x in g["reasons"]} for g in flagged[1:])]
 
 
 def at_risk(day_guests: list[dict]) -> dict:
@@ -151,7 +181,9 @@ def roi(line: float = FLAG_LINE) -> dict:
             "share_cancelled": round(float(flagged.cancelled.mean()), 2),
             "caught_per_morning": round(flagged.cancelled.sum() / mornings, 1),
             "caught": int(flagged.cancelled.sum()), "cancelled": int(r.cancelled.sum()),
-            "caught_value_per_morning": f"${flagged.total[flagged.cancelled == 1].sum() / mornings:,.0f}"}
+            "caught_value_per_morning": f"${flagged.total[flagged.cancelled == 1].sum() / mornings:,.0f}",
+            "random_caught_per_morning": round(sum((d.risk >= line).sum() * d.cancelled.mean()
+                                                   for _, d in r.groupby("day")) / mornings, 1)}
 
 
 if __name__ == "__main__":

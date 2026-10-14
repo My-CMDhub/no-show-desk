@@ -48,3 +48,8 @@ def test_summary_on_a_quiet_morning_says_so():
 def test_the_ping_waits_until_the_next_morning_time():
     assert seconds_until("08:00", datetime(2026, 10, 14, 7, 0)) == 3600
     assert seconds_until("08:00", datetime(2026, 10, 14, 9, 0)) == 23 * 3600
+
+
+def test_one_flagged_guest_gets_no_what_they_share_line_and_risk_never_rounds_up():
+    text = summary([g("Ana Silva", 0.3299, 6, [{"label": "Booked through travel agent #9", "rate": 0.4}])], 0.30, "http://x", "$88.00")
+    assert "share" not in text and "Ana Silva (32%)" in text and "1 guest arriving" in text

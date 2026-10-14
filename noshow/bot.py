@@ -4,6 +4,7 @@ they press Draft or Leave. Started by noshow.app. Nothing is ever sent to a gues
 """
 import asyncio
 import logging
+import math
 import os
 from collections import Counter
 from datetime import datetime, timedelta
@@ -25,18 +26,23 @@ def is_owner(update: Update) -> bool:
     return bool(user and chat and chat.type == "private" and user.id == owner_id())
 
 
+def pct(x: float) -> str:
+    """Never round a risk up past the line it was flagged on: 29.8% shows as 29%, not 30%."""
+    return f"{math.floor(x * 100 + 1e-9)}%"
+
+
 def summary(guests: list[dict], line: float, url: str, total: str) -> str:
     flagged = [g for g in guests if g["flagged"]]
     if not flagged:
         return f"Good morning. None of the guests arriving in the next {desk.DAYS_AHEAD} days look likely to cancel. {url}"
-    names = [f"{g['booking']['guest']} ({g['risk']:.0%})" for g in flagged[:3]]
+    names = [f"{g['booking']['guest']} ({pct(g['risk'])})" for g in flagged[:3]]
     first = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
     more = f", plus {len(flagged) - 3} more" if len(flagged) > 3 else ""
     tops = Counter((g["reasons"][0]["label"], g["reasons"][0]["rate"]) for g in flagged if g["reasons"])
     shared = ""
-    if tops and (top := tops.most_common(1)[0])[1] * 2 > len(flagged):
+    if len(flagged) >= 3 and (top := tops.most_common(1)[0])[1] * 2 > len(flagged):
         (label, rate), _ = top
-        shared = f"What most of them share: {label[0].lower() + label[1:]} ({rate:.0%} of similar past guests cancelled).\n"
+        shared = f"What most of them share: {label[0].lower() + label[1:]} ({pct(rate)} of similar past guests cancelled).\n"
     n = len(flagged)
     return (f"Good morning. {n} guest{'s' if n != 1 else ''} arriving in the next {desk.DAYS_AHEAD} days might not "
             f"show: {total} of bookings.\n\nStart with {first}{more}.\n{shared}\n"

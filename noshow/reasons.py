@@ -25,7 +25,7 @@ def _agent(v, g) -> tuple[str, str]:
         return "Booked without an agent", "past bookings without one"
     if g == "other":
         return "Booked through a small agent", "past bookings from small agents"
-    return f"Booked through agent {g}", "past bookings from that agent"
+    return f"Booked through travel agent #{g}", "past bookings from that agent"
 
 
 def _band(days) -> str:

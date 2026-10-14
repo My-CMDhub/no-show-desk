@@ -52,5 +52,5 @@ def test_at_most_three_reasons_biggest_gap_first():
 def test_the_booking_agent_and_room_only_can_be_reasons():
     history = pd.DataFrame(rows(40, 20, agent="9", meal="SC") + rows(60, 6))
     found = {r["label"]: r["who"] for r in reasons(booking(agent="9", meal="SC"), history)}
-    assert found == {"Booked through agent 9": "past bookings from that agent",
+    assert found == {"Booked through travel agent #9": "past bookings from that agent",
                      "Room only, no meals": "past room-only bookings"}

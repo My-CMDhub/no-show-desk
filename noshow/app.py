@@ -34,6 +34,7 @@ api = FastAPI(lifespan=lifespan)
 
 class Edit(BaseModel):
     text: str | None = Field(None, max_length=1000)
+    anyway: bool = False   # the owner saw the check's problems and sends regardless
 
 
 @api.get("/")
@@ -45,7 +46,7 @@ def page():
 def day(request: Request):
     guests = desk.guests(desk.DAY, request.app.state.desk)
     return {"day": desk.DAY, "line": desk.FLAG_LINE, "days_ahead": desk.DAYS_AHEAD, "roi": desk.roi(),
-            "at_risk": desk.at_risk(guests), "guests": guests}
+            "at_risk": desk.at_risk(guests), "shared": desk.shared_reasons(guests), "guests": guests}
 
 
 @api.post("/api/morning")
@@ -58,7 +59,10 @@ def morning(request: Request):
 def act(thread: str, action: str, request: Request, edit: Edit | None = None):
     try:
         with GEMMA if action == "draft" else nullcontext():
-            return desk.act(thread, action, edit.text if edit else None, request.app.state.desk)
+            return desk.act(thread, action, edit.text if edit else None, request.app.state.desk,
+                            anyway=bool(edit and edit.anyway))
+    except desk.NeedsOwner as e:
+        raise HTTPException(422, {"problems": e.problems})
     except ValueError as e:
         raise HTTPException(409, str(e))
 

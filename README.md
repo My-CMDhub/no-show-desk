@@ -44,16 +44,16 @@ Nothing is sent without the owner. In this demo nothing leaves the computer: Sen
 ## How it works
 
 ```mermaid
-flowchart LR
-    A[Upcoming bookings] --> B[TabPFN scores risk<br/>from past bookings]
-    B -->|30% or more| C{Owner: Draft or Leave?}
+flowchart TD
+    A[Upcoming bookings] --> B[TabPFN scores each booking<br/>from the motel's past bookings]
     B -->|under 30%| Z[Listed as expected]
-    C -->|Draft| D[Code works out dates,<br/>nights, total, free-cancel date]
-    D --> E[Gemma 4 phrases<br/>the message]
-    E --> F[Checker compares every<br/>date and amount]
-    F -->|wrong, once| E
-    F --> G{Owner: Send or Reject?}
+    B -->|30% or more| C{Owner: Draft or Leave?}
     C -->|Leave| H[No message]
+    C -->|Draft| D[Code works out dates, nights,<br/>total and free-cancel date]
+    D --> E[Gemma 4 phrases the message]
+    E --> F[Checker compares every<br/>date and amount]
+    F -->|wrong: one redraft| E
+    F -->|right| G{Owner: Send or Reject?}
 ```
 
 **Code computes, the model phrases.** The model never works out a date or a price; it is handed them. A plain-Python checker then reads every date, night count and amount in the draft and compares them with the booking. One redraft is allowed; after that the owner sees exactly what's wrong.

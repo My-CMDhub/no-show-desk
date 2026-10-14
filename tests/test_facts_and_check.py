@@ -51,3 +51,25 @@ def test_missing_total_fails():
 def test_date_formats_the_model_likes_are_read():
     ok = GOOD.replace("10 March", "March 10th").replace("8 March", "the 8th of March")
     assert draft(ok) == []
+
+
+# Formats Gemma actually wrote in the before/after run, all with the right facts.
+def test_numeric_and_abbreviated_dates_are_read():
+    for arrival, departure, cancel in [("3/10", "3/13", "3/8"), ("2017-03-10", "2017-03-13", "2017-03-08"),
+                                       ("Mar 10", "Mar 13", "Mar 8"), ("3/10/2017", "3/13/2017", "3/8/2017")]:
+        text = (f"Hi Ana, 3 nights from {arrival} to {departure}, $286.50 in total. "
+                f"Cancel free until {cancel}. Reply YES.")
+        assert draft(text) == [], arrival
+
+
+def test_a_wrong_numeric_date_still_fails():
+    assert draft(GOOD.replace("Monday 13 March", "3/12")) == [
+        "date 12 March is not arrival, departure or free-cancel date"]
+
+
+def test_the_right_total_without_a_dollar_sign_counts_as_mentioned():
+    assert draft(GOOD.replace("$286.50", "286.50")) == []
+
+
+def test_words_that_start_like_months_are_not_dates():
+    assert draft(GOOD + " The 2 market stalls and 3 junior rooms are nearby.") == []

@@ -50,8 +50,11 @@ with out.open("a") as f:
                 print(f"{i:>3} {brief_name:<5} seed {seed}: {len(problems)} problem(s)", flush=True)
 
 drafts = [json.loads(line) for line in out.open()]
+for d in drafts:   # score with the current checker; the score from the moment of drafting stays in the file
+    d["problems"] = check_draft(d["draft"], work_out_facts(bookings[d["i"]]))
 lines = ["# Before / after: facts worked out in code", "",
-         f"{len(bookings)} no-deposit bookings from 2017 × {REPEATS} drafts each × 2 briefs. Model: {MODEL}.", "",
+         f"{len(bookings)} no-deposit bookings from 2017 × {REPEATS} drafts each × 2 briefs. Model: {MODEL}.",
+         "Scored with the current checker (it learned numeric and abbreviated dates after the first read-through).", "",
          "| Brief | Drafts | With a wrong or missing fact | Median seconds |", "|---|---|---|---|"]
 for name, label in [("raw", "Raw booking record (model works it out)"), ("facts", "Facts worked out in code")]:
     ds = [d for d in drafts if d["brief"] == name]

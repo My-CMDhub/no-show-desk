@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+data/raw/
+*.sqlite
+*.sqlite-*
+.DS_Store
+# personal learning scripts, kept local
+learn/

@@ -15,6 +15,19 @@ CHANNELS = {"Online TA": "an online travel agent", "Offline TA/TO": "a travel ag
             "Complementary": "a complimentary stay", "Aviation": "an airline crew booking"}
 
 
+MEALS = {"SC": ("Room only, no meals", "past room-only bookings"), "BB": ("Bed and breakfast", "past B&B bookings"),
+         "HB": ("Half board", "past half-board bookings"), "FB": ("Full board", "past full-board bookings")}
+
+
+def _agent(v, g) -> tuple[str, str]:
+    # The dataset numbers its agents; a real motel would see the name (e.g. the booking site)
+    if g == "0":
+        return "Booked without an agent", "past bookings without one"
+    if g == "other":
+        return "Booked through a small agent", "past bookings from small agents"
+    return f"Booked through agent {g}", "past bookings from that agent"
+
+
 def _band(days) -> str:
     return next(label for top, label in LEAD_BANDS if days <= top)
 
@@ -23,13 +36,15 @@ def _channel(seg) -> str:
     return CHANNELS.get(str(seg), str(seg))
 
 
-# column, how a value is grouped, (label for this booking, who the past group is)
+# column, how a value is grouped, (label for this booking, who the past group is); max 3 shown, biggest first
 FACTORS = [
     ("lead_time", _band, lambda v, g: (f"Booked {v} days ahead", f"past guests who booked {g} ahead")),
     ("previous_cancellations", lambda v: v > 0, lambda v, g: (
         (f"Cancelled {v} booking{'s' if v > 1 else ''} before", "past guests with an earlier cancellation")
         if g else ("No earlier cancellations", "past guests with none"))),
     ("market_segment", _channel, lambda v, g: (f"Booked via {g}", "past bookings through that channel")),
+    ("agent", str, _agent),
+    ("meal", str, lambda v, g: MEALS.get(g, ("Meal plan not recorded", "past bookings without one"))),
     ("is_repeated_guest", lambda v: v == 1, lambda v, g: (
         ("Has stayed before", "past returning guests") if g else ("First stay with you", "past first-time guests"))),
     ("total_of_special_requests", lambda v: v > 0, lambda v, g: (

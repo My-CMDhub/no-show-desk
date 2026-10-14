@@ -3,7 +3,7 @@ import pandas as pd
 from noshow.reasons import reasons
 
 NEUTRAL = {"deposit_type": "No Deposit", "previous_cancellations": 0, "market_segment": "Direct",
-           "is_repeated_guest": 0, "total_of_special_requests": 1}
+           "is_repeated_guest": 0, "total_of_special_requests": 1, "agent": "0", "meal": "BB"}
 
 
 def rows(n, cancelled, **fields):
@@ -47,3 +47,10 @@ def test_at_most_three_reasons_biggest_gap_first():
     found = reasons(booking(**risky), history)   # four factors qualify; earlier cancellations cancel most
     assert len(found) == 3 and [r["rate"] for r in found] == sorted([r["rate"] for r in found], reverse=True)
     assert found[0]["label"] == "Cancelled 1 booking before" and found[0]["rate"] == 0.95
+
+
+def test_the_booking_agent_and_room_only_can_be_reasons():
+    history = pd.DataFrame(rows(40, 20, agent="9", meal="SC") + rows(60, 6))
+    found = {r["label"]: r["who"] for r in reasons(booking(agent="9", meal="SC"), history)}
+    assert found == {"Booked through agent 9": "past bookings from that agent",
+                     "Room only, no meals": "past room-only bookings"}

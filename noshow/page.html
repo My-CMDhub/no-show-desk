@@ -81,7 +81,8 @@
   .who b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .who > span { color: var(--muted); }
   .r em { font-style: normal; font-weight: 400; color: var(--muted); }
-  .r em.st-ready, .r em.st-risk { font-weight: 600; color: var(--ink); }
+  .r em { white-space: nowrap; }
+  .r em.st-ready { font-weight: 600; color: var(--ink); }
   .r em.st-sent { font-weight: 600; color: var(--ok); }
   .done .who b { color: var(--muted); }
   .amt { text-align: right; font-weight: 600; }
@@ -169,7 +170,7 @@
     .cols { display: grid; grid-template-columns: 64px minmax(0, 1.3fr) 110px minmax(0, 1fr) 100px 18px; gap: 14px;
             padding: 12px 4px 8px; color: var(--muted); border-bottom: 1px solid var(--rule);
             text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 600; }
-    .who em, .who .when .sep:last-child { display: none; }
+    .who em { display: none; }
     .cols span:nth-child(5) { text-align: right; }
     .who .when { display: none; }
   }
@@ -337,7 +338,7 @@ function rowHead(g) {
   const nights = plural(f.nights, "night", "nights"), word = lit && st === "Might not show" ? "" : st;
   return `<button class="head" aria-expanded="${open === g.id}" aria-controls="p-${g.id}" onclick="toggle('${g.id}')">
       <span class="lamp" aria-label="${pct(g.risk)} likely to cancel">${pct(g.risk)}</span>
-      <span class="who"><b>${esc(b.guest)}</b><span><span class="when">${esc(day(b.arrival))}${SEP}${nights}${word ? SEP : ""}</span>${word ? `<em class="${tone(st)}">${st}</em>` : ""}</span></span>
+      <span class="who"><b>${esc(b.guest)}</b><span><span class="when">${esc(day(b.arrival))}${SEP}${nights}</span>${word ? `<em class="${tone(st)}">${SEP}${st}</em>` : ""}</span></span>
       <span class="col">${esc(day(b.arrival))}<span>${nights}</span></span>
       <span class="col"><em class="${tone(st)}">${st}</em></span>
       <span class="amt">${esc(f.total)}</span>

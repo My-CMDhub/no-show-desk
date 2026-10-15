@@ -45,7 +45,7 @@ r = pd.read_csv(OUT)
 mornings, total = r.day.nunique(), r.cancelled.sum()
 r["rank"] = r.groupby("day").risk.rank(ascending=False, method="first")
 rules = {f"Top {FLAG_TOP} each morning": r["rank"] <= FLAG_TOP}
-rules |= {f"Risk {t:.0%} or more": r.risk >= t for t in (0.30, 0.45, 0.50)}
+rules |= {f"Risk {t:.0%} or more": r.risk >= t for t in (0.25, 0.30, 0.45, 0.50)}
 lines = []
 for name, flag in rules.items():
     per_day = flag.groupby(r.day).sum()

@@ -80,7 +80,7 @@ On real past bookings, with the outcome hidden until scoring. Every number comes
 | Ranking with a motel-sized history | TabPFN ahead of gradient boosting at 300, 1,000 and 3,000 past bookings (0.766 vs 0.702 ROC-AUC at 1,000) | 3 histories per size | [small_history.md](results/small_history.md) |
 | Wrong facts when the model works out dates itself | **13 of 100** drafts | 50 bookings × 2 | [drafts.md](results/drafts.md) |
 | Wrong facts when code hands it the facts | **0 of 100**, every draft also read by hand | 50 bookings × 2 | [drafts_reconfirm.md](results/drafts_reconfirm.md) |
-| Gemma in the browser (WebGPU) | **0 of 20** wrong facts; 2.9 s per draft, against about 31 s through Ollama on the same Mac | 20 drafts | [drafts_browser_spike.md](results/drafts_browser_spike.md) |
+| Gemma in the browser (WebGPU) | **0 of 100** wrong facts; 3.25 s per draft, against 31.4 s through Ollama on the same Mac | 50 bookings × 2 | [drafts_browser.md](results/drafts_browser.md) |
 
 The automatic checker missed things on first contact; it was fixed and rescored against the same stored drafts, and both stories are written up in the result files.
 
@@ -110,7 +110,7 @@ Download `gemma-4-E2B-it-web.litertlm` (2.0 GB) from [litert-community/gemma-4-E
 .venv/bin/python -m spike.server       # open http://localhost:8001 in a browser with WebGPU
 ```
 
-The page loads the model onto the graphics chip (about 10 s from disk), drafts 20 messages and sends each one to the same checker.
+The page loads the model onto the graphics chip (about 10 s from disk), drafts 20 messages and sends each one to the same checker. `SPIKE_FULL=1` runs all 100.
 </details>
 
 <details>

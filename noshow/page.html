@@ -347,7 +347,7 @@ function rowHead(g) {
 
 function why(g) {
   const shared = sharedLabels(), own = (g.reasons || []).filter((r) => !(g.flagged && shared.has(r.label)));
-  const say = (r) => `<b>${esc(r.label)}.</b> ${pct(r.rate)} of ${esc(r.who)} cancelled, against ${pct(r.base)} of all past guests.`;
+  const say = (r) => `<b>${esc(r.label)}.</b> ${pct(r.rate)} of ${esc(r.who)} cancelled, against ${pct(r.base)} of all past bookings without a deposit.`;
   if (!own.length) return `<p>${g.flagged && shared.size ? "What all of today's flagged guests have in common (above). Beyond that, it's the mix of details on this booking."
     : g.flagged ? "No single thing stands out; it's the mix of details on this booking." : "Nothing about this booking stands out."}</p>`;
   const rest = own.slice(1);
@@ -421,7 +421,7 @@ function renderBoard() {
   if (ui.tab === "today") {
     const others = data.guests.filter((g) => !g.flagged && g.booking.due !== false).length, sh = data.shared || [];
     const common = sh.length && flagged().length ? `<p class="common"><b>What they all have in common:</b> ${sh.map((r) =>
-      `${esc(r.label[0].toLowerCase() + r.label.slice(1))} (${pct(r.rate)} of ${esc(r.who)} cancelled, against ${pct(r.base)} overall)`).join("; ")}.</p>` : "";
+      `${esc(r.label[0].toLowerCase() + r.label.slice(1))} (${pct(r.rate)} of ${esc(r.who)} cancelled, against ${pct(r.base)} of all bookings without a deposit)`).join("; ")}.</p>` : "";
     el.innerHTML = `${common}<ul class="board">${COLS}${flagged().map(row).join("")}</ul>
       ${others ? `<button class="rest" onclick="tab('bookings')">${plural(others, "other arrival looks", "other arrivals look")} fine. See all bookings ${ICON.right}</button>` : ""}`;
     return fit();

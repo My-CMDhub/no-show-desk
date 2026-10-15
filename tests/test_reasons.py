@@ -21,7 +21,7 @@ def booking(**fields):
 def test_an_early_booking_gets_the_lead_time_reason_in_plain_words():
     [r] = reasons(booking(lead_time=210), HISTORY)
     assert r["text"] == ("Booked 210 days ahead: past guests who booked 6 to 12 months ahead "
-                         "cancelled 50% of the time (all past guests: 26%).")
+                         "cancelled 50% of the time (all past bookings without a deposit: 26%).")
     assert (r["rate"], r["base"], r["n"]) == (0.5, 0.26, 40)
 
 

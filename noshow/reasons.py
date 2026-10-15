@@ -67,5 +67,5 @@ def reasons(booking: pd.Series, history: pd.DataFrame) -> list[dict]:
         if rate - base >= MIN_GAP:
             label, who = say(value, g)
             found.append({"label": label, "who": who, "rate": rate, "base": base, "n": len(same),
-                          "text": f"{label}: {who} cancelled {rate:.0%} of the time (all past guests: {base:.0%})."})
+                          "text": f"{label}: {who} cancelled {rate:.0%} of the time (all past bookings without a deposit: {base:.0%})."})
     return sorted(found, key=lambda r: -r["rate"])[:MAX_REASONS]

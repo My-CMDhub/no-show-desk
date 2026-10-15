@@ -2,6 +2,8 @@
 compare 'flag everyone over X%' with 'flag the 5 riskiest'.
 
 Run: .venv/bin/python scripts/eval_thresholds.py   (writes results/thresholds.md and morning_risks.csv)
+     .venv/bin/python scripts/eval_thresholds.py 2016   (30 earlier mornings, a year before the test ones, to pick a
+     line without looking at 2017: results/thresholds_2016.md and morning_risks_2016.csv)
 """
 import os
 import sys
@@ -20,10 +22,12 @@ load_dotenv(ROOT / ".env")
 from tabpfn_client import TabPFNClassifier, set_access_token  # noqa: E402
 set_access_token(os.environ["TABPFN_API_KEY"])
 
-OUT = ROOT / "results/morning_risks.csv"
+YEAR = sys.argv[1] if len(sys.argv) > 1 else "2017"
+TAG = "" if YEAR == "2017" else f"_{YEAR}"
+OUT = ROOT / f"results/morning_risks{TAG}.csv"
 if not OUT.exists():
     df = load()
-    days = pd.date_range("2017-01-09", "2017-08-21", periods=30).normalize()
+    days = pd.date_range(f"{YEAR}-01-09", f"{YEAR}-08-21", periods=30).normalize()
     rows = []
     for n, day in enumerate(days):
         history = df[df.arrival < day].sample(HISTORY_ROWS, random_state=n)
@@ -52,5 +56,5 @@ for name, flag in rules.items():
 md = (f"# Threshold or top 5? Same {mornings} mornings, {len(r)} guests, {total} cancelled\n\n"
       "| Rule | Flagged | Per morning | Mornings with nobody flagged | Flagged who cancelled | Cancellations caught | Same number at random would catch |\n"
       "|---|---|---|---|---|---|---|\n" + "\n".join(lines) + "\n")
-(ROOT / "results/thresholds.md").write_text(md)
+(ROOT / f"results/thresholds{TAG}.md").write_text(md)
 print(md)

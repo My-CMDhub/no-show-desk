@@ -14,7 +14,7 @@
 <body>
 <h1>Browser Gemma spike</h1>
 <p id="status">Starting…</p>
-<button id="go" disabled>Run 20 drafts</button>
+<button id="go" disabled>Run the drafts</button>
 <table><thead><tr><th>#</th><th>secs</th><th>check</th><th>draft</th></tr></thead><tbody id="rows"></tbody></table>
 <script type="module">
 import { Engine } from "https://cdn.jsdelivr.net/npm/@litert-lm/core@0.18.0/+esm";
@@ -23,7 +23,8 @@ const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({"&": "&amp;", "<": "&lt;
 window.spike = {done: 0, wrong: 0, loadSecs: null, error: null};
 try {
   if (!navigator.gpu) throw new Error("No WebGPU in this browser");
-  const {system, briefs} = await (await fetch("/briefs")).json();
+  const {system, seeds, briefs} = await (await fetch("/briefs")).json();
+  const jobs = seeds.flatMap((seed) => briefs.map((b) => ({...b, seed})));
   $("#status").textContent = "Loading Gemma 4 E2B (2.0 GB) onto the GPU…";
   const t0 = performance.now();
   const engine = await Engine.create({model: "/model"});
@@ -32,8 +33,8 @@ try {
   $("#go").disabled = false;
   $("#go").onclick = async () => {
     $("#go").disabled = true;
-    for (const b of briefs) {   // one at a time: one model job on an 8 GB Mac
-      const seed = 1;
+    for (const b of jobs) {   // one at a time: one model job on an 8 GB Mac
+      const seed = b.seed;
       const chat = await engine.createConversation({
         preface: {messages: [{role: "system", content: system}]},
         sessionConfig: {samplerParams: {type: 2, temperature: 0.7, p: 0.95, k: 64, seed}},   // Ollama's Gemma defaults
@@ -46,9 +47,9 @@ try {
       const {problems} = await (await fetch("/check", {method: "POST", headers: {"content-type": "application/json"},
         body: JSON.stringify({i: b.i, seed, draft, secs})})).json();
       spike.done++; if (problems.length) spike.wrong++;
-      $("#rows").insertAdjacentHTML("beforeend", `<tr><td>${b.i}</td><td>${secs}</td>
+      $("#rows").insertAdjacentHTML("beforeend", `<tr><td>${b.i}.${seed}</td><td>${secs}</td>
         <td class="${problems.length ? "bad" : "ok"}">${problems.length ? esc(problems.join("; ")) : "ok"}</td><td>${esc(draft)}</td></tr>`);
-      $("#status").textContent = `${spike.done} of ${briefs.length} drafted, ${spike.wrong} with a wrong or missing fact.`;
+      $("#status").textContent = `${spike.done} of ${jobs.length} drafted, ${spike.wrong} with a wrong or missing fact.`;
     }
   };
 } catch (e) {

@@ -2,9 +2,11 @@
 Ollama did? Same bookings, same system prompt, same brief, same checker; only where the model runs changes.
 
 Run: .venv/bin/python -m spike.server   then open http://localhost:8001 (stop Ollama's model first: 8 GB Mac)
+Full run: SPIKE_FULL=1 drafts all 50 bookings twice (seeds 1 and 2), like results/drafts_reconfirm.md.
 Model file: data/models/gemma-4-E2B-it-web.litertlm (2.0 GB, git-ignored; the page fetches it from here).
 """
 import json
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -20,13 +22,15 @@ from noshow.facts import work_out_facts
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = ROOT / "data/models/gemma-4-E2B-it-web.litertlm"
-OUT = ROOT / "results/drafts_browser_spike.jsonl"
-N = 20
+FULL = os.getenv("SPIKE_FULL") == "1"
+OUT = ROOT / ("results/drafts_browser.jsonl" if FULL else "results/drafts_browser_spike.jsonl")
+N, SEEDS = (50, [1, 2]) if FULL else (20, [1])
 
 # The same sample as scripts/eval_drafts.py with a tag (random_state=1, seen 0–2 days before arrival).
 _, test = time_split(load())
 rows = test[test.deposit_type == "No Deposit"].sample(50, random_state=1)
-BOOKINGS = [{"guest": NAMES[i % len(NAMES)], "arrival": r.arrival.date(), "adr": float(r.adr),
+BOOKINGS = [{"guest": NAMES[i % 24],   # the 24 names the Ollama runs used, so the briefs match word for word
+             "arrival": r.arrival.date(), "adr": float(r.adr),
              "stays_in_weekend_nights": int(r.stays_in_weekend_nights),
              "stays_in_week_nights": int(r.stays_in_week_nights),
              "reserved_room_type": str(r.reserved_room_type), "today": r.arrival.date() - timedelta(days=i % 3)}
@@ -57,7 +61,7 @@ def model():
 
 @app.get("/briefs")
 def briefs():
-    return {"system": SYSTEM, "briefs": [{"i": i, "brief": facts_brief(work_out_facts(b))} for i, b in enumerate(BOOKINGS)]}
+    return {"system": SYSTEM, "seeds": SEEDS, "briefs": [{"i": i, "brief": facts_brief(work_out_facts(b))} for i, b in enumerate(BOOKINGS)]}
 
 
 @app.post("/check")

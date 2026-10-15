@@ -1,4 +1,4 @@
-# Threshold or top 5? Same 30 mornings, 600 guests, 134 cancelled
+# Threshold or top 5? 30 mornings in 2016, 600 guests, 134 cancelled
 
 | Rule | Flagged | Per morning | Mornings with nobody flagged | Flagged who cancelled | Cancellations caught | Same number at random would catch |
 |---|---|---|---|---|---|---|

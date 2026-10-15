@@ -53,7 +53,7 @@ for name, flag in rules.items():
     rand = (per_day * r.groupby("day").cancelled.mean()).sum()   # the same number per morning, picked at random
     lines.append(f"| {name} | {flag.sum()} | {per_day.min()}–{per_day.max()} | {(per_day == 0).sum()} | "
                  f"{hit} of {flag.sum()} ({hit / max(flag.sum(), 1):.0%}) | {hit} of {total} ({hit / total:.0%}) | {rand:.0f} |")
-md = (f"# Threshold or top 5? Same {mornings} mornings, {len(r)} guests, {total} cancelled\n\n"
+md = (f"# Threshold or top 5? {mornings} mornings in {YEAR}, {len(r)} guests, {total} cancelled\n\n"
       "| Rule | Flagged | Per morning | Mornings with nobody flagged | Flagged who cancelled | Cancellations caught | Same number at random would catch |\n"
       "|---|---|---|---|---|---|---|\n" + "\n".join(lines) + "\n")
 (ROOT / f"results/thresholds{TAG}.md").write_text(md)

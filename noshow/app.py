@@ -51,6 +51,13 @@ def day(request: Request):
             "at_risk": desk.at_risk(guests), "shared": desk.shared_reasons(guests), "guests": guests}
 
 
+@api.get("/api/replay/{year}")
+def replay(year: str):
+    if year not in ("2016", "2017"):   # the two years with stored mornings
+        raise HTTPException(404, "No stored mornings for that year")
+    return desk.replay(year)
+
+
 @api.post("/api/morning")
 def morning(request: Request):
     desk.morning(desk.DAY, request.app.state.desk)

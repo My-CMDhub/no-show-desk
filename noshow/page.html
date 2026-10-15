@@ -30,6 +30,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--panel); color: var(--ink); font: 400 var(--s1)/1.5 var(--face);
          font-variant-numeric: tabular-nums; caret-color: var(--ink); }
@@ -153,8 +154,41 @@
   .chips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
   .pager { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; color: var(--muted); }
   .pager div { display: flex; gap: 8px; }
-  .pager button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--rule-strong); border-radius: 8px; background: transparent; }
-  .pager button:disabled { opacity: .35; cursor: default; }
+  .pager button, .step button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--rule-strong); border-radius: 8px; background: transparent; }
+  .pager button:disabled, .step button:disabled { opacity: .35; cursor: default; }
+
+  /* replay: a past morning, then what really happened */
+  .rp .head { cursor: default; }
+  .rp .head:hover { background: none; }
+  .flip { display: inline-block; }
+  .reveal .flip { animation: flap .45s var(--ease) both; animation-delay: var(--d, 0ms); }
+  @keyframes flap { from { transform: perspective(240px) rotateX(-90deg); opacity: 0; } }
+  .r em.st-caught { font-weight: 600; color: var(--ink); }
+  .r em.st-missed { font-weight: 600; color: var(--warn); }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step span { min-width: 9.5em; text-align: center; font-weight: 600; line-height: 1.25; }
+  .step small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); }
+  .line output { color: var(--ink); font-weight: 800; min-width: 3ch; }
+  .line input { accent-color: var(--ink); width: 150px; }
+  .line .rest { margin: 0; }
+  .act.rp-act { padding: 4px 0 14px; }
+  .sum { padding: 4px 0 14px; }
+  .sum .big { margin: 0; color: var(--ink); font-size: var(--s2); font-weight: 800; line-height: 1.15; letter-spacing: -0.015em; }
+  .sum p { margin: 6px 0 0; color: var(--muted); max-width: 64ch; }
+  .sum p b { color: var(--ink); font-weight: 600; }
+  .strip { display: grid; grid-template-columns: repeat(30, 1fr); gap: 3px; align-items: end; height: 84px; margin: 14px 0 6px; }
+  .strip button { height: 100%; display: flex; flex-direction: column-reverse; gap: 2px; padding: 0 0 6px; border: 0; border-radius: 0; background: none; }
+  .strip button.here { background: linear-gradient(var(--ink), var(--ink)) bottom / 100% 2px no-repeat; }
+  .strip i, .key i { display: block; border-radius: 2px; }
+  .strip i { transition: height .5s var(--ease); }
+  .strip.intro i { transition-delay: var(--d); }
+  .strip .c { height: calc(var(--c) * 72px); }
+  .strip .m { height: calc(var(--m) * 72px); }
+  .c { background: var(--ink); }
+  .m { box-shadow: inset 0 0 0 1px var(--rule-strong); }
+  .key { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; margin: 0; color: var(--muted); font-size: 13px; }
+  .key i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 
   .empty { padding: 28px 0; }
   .empty p { margin: 0 0 14px; color: var(--muted); max-width: 52ch; }
@@ -179,7 +213,8 @@
     .cells div:nth-child(n+3) { border-top: 1px solid var(--rule); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .fold, .chev, .btn { transition: none; }
+    .fold, .chev, .btn, .strip i { transition: none; }
+    .reveal .flip { animation: none; }
     .bar i { animation: none; width: 60%; }
   }
 </style>
@@ -418,6 +453,11 @@ function bookingsList() {
 function renderBoard() {
   const el = $("#board-slot");
   if (!el) return;
+  if (ui.tab === "replay") {
+    el.innerHTML = replayBoard();
+    if (rp.all === "intro" && !calm()) requestAnimationFrame(() => requestAnimationFrame(paintStrip)); else paintStrip();
+    return;
+  }
   if (ui.tab === "today") {
     const others = data.guests.filter((g) => !g.flagged && g.booking.due !== false).length, sh = data.shared || [];
     const common = sh.length && flagged().length ? `<p class="common"><b>What they all have in common:</b> ${sh.map((r) =>
@@ -444,6 +484,150 @@ function renderBoard() {
   fit();
 }
 
+// Replay: the stored test mornings. Scores were made before each morning; outcomes stay hidden until Reveal.
+let replays = {}, rp = {year: "2017", i: null, line: null, seen: {}, all: false};
+const money = (n) => "$" + n.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const rpYear = () => replays[rp.year];
+const rpKey = () => `${rp.year}-${rp.i}`;
+const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+async function getYear(y) {
+  if (!replays[y]) {
+    const r = await fetch(`/api/replay/${y}`);
+    if (!r.ok) throw new Error(r.status);
+    replays[y] = await r.json();
+  }
+  settle();
+}
+function settle() {   // first visit to a year: the demo morning if the year has it, else its first morning
+  rp.line ??= rpYear().line;
+  if (rp.i === null) rp.i = Math.max(0, rpYear().mornings.findIndex((m) => m.day === data.day));
+}
+
+function tally(m, line = rp.line) {   // one morning at one line: who'd be messaged, and who really cancelled
+  const msgd = m.guests.filter((g) => g.risk >= line), cancelled = m.guests.filter((g) => g.cancelled);
+  const caught = msgd.filter((g) => g.cancelled);
+  return {msgs: msgd.length, cancelled: cancelled.length, caught: caught.length, missed: cancelled.filter((g) => g.risk < line),
+          random: msgd.length * cancelled.length / m.guests.length,   // the same number of messages, sent at random
+          value: caught.reduce((s, g) => s + g.total, 0)};
+}
+function yearTally() {
+  const ts = rpYear().mornings.map((m) => tally(m));
+  const add = (k) => ts.reduce((s, t) => s + (k === "missed" ? t.missed.length : t[k]), 0);
+  return {mornings: ts.length, msgs: add("msgs"), cancelled: add("cancelled"), caught: add("caught"), random: add("random"), value: add("value")};
+}
+
+function rpState(g, shown) {   // before Reveal: what the desk said that morning. After: what the guest did
+  const lit = g.risk >= rp.line;
+  if (!shown) return {lit, st: lit ? "Might not show" : "Expected", tone: lit ? "st-risk" : ""};
+  if (g.cancelled) return {lit, st: lit ? "Cancelled, caught" : "Cancelled, missed", tone: lit ? "st-caught" : "st-missed"};
+  return {lit, st: lit ? "Came anyway" : "Came", tone: ""};
+}
+
+function rpRow(g, i, shown) {
+  const s = rpState(g, shown), nights = plural(g.nights, "night", "nights");
+  return `<li class="r rp ${s.lit ? "lit" : ""}" id="rp-${g.id}" style="--d:${i * 45}ms"><div class="head">
+      <span class="lamp" aria-label="${pct(g.risk)} likely to cancel">${pct(g.risk)}</span>
+      <span class="who"><b>${esc(g.name)}</b><span><span class="when">${esc(day(g.arrival))}${SEP}${nights}</span><em class="flip ${s.tone}">${SEP}${s.st}</em></span></span>
+      <span class="col">${esc(day(g.arrival))}<span>${nights}</span></span>
+      <span class="col"><em class="flip ${s.tone}">${s.st}</em></span>
+      <span class="amt">${money(g.total)}</span><span></span></div></li>`;
+}
+
+function rpPaint() {   // in place, so lamps fade on and off while the line is dragged
+  const m = rpYear().mornings[rp.i], shown = !!rp.seen[rpKey()];
+  for (const g of m.guests) {
+    const li = document.getElementById(`rp-${g.id}`), s = rpState(g, shown);
+    if (!li) continue;
+    li.classList.toggle("lit", s.lit);
+    li.querySelectorAll(".flip").forEach((em, k) => { em.className = `flip ${s.tone}`; em.innerHTML = (k ? "" : SEP) + s.st; });
+  }
+  $("#lede").innerHTML = replayLede();
+  const sum = $("#rp-sum");
+  if (sum) sum.innerHTML = summary();
+  paintStrip();
+}
+function paintStrip() {   // bar heights change in place, so they glide when the line moves
+  if (!rpYear()) return;
+  const top = stripTop();
+  document.querySelectorAll(".strip button").forEach((b, i) => {
+    const m = rpYear().mornings[i], t = tally(m);
+    b.style.setProperty("--c", t.caught / top); b.style.setProperty("--m", (t.cancelled - t.caught) / top);
+    b.title = `${day(m.day)}: caught ${t.caught} of ${t.cancelled}`;
+    b.setAttribute("aria-label", b.title);
+  });
+}
+const stripTop = () => Math.max(1, ...rpYear().mornings.map((m) => m.guests.filter((g) => g.cancelled).length));
+
+function replayLede() {
+  if (!rpYear()) return `<h1>Would the desk have been right?</h1><p>Loading the past mornings…</p>`;
+  const m = rpYear().mornings[rp.i], t = tally(m), when = esc(day(m.day, {weekday: "short", day: "numeric", month: "short", year: "numeric"}));
+  const same = m.day === data.day ? " The same guests as on Today." : "";
+  if (!rp.seen[rpKey()]) return `<h1>Would the desk have been right?</h1>
+    <p>${when}: at ${pct(rp.line)}, the desk would message <b>${t.msgs} of ${m.guests.length}</b> guests. It scored them using only bookings made before that morning.
+    What each guest really did is hidden until you reveal it.${same}</p>`;
+  const h = t.cancelled ? `Caught ${t.caught} of ${t.cancelled} ${t.cancelled === 1 ? "cancellation" : "cancellations"}.` : "Nobody cancelled this morning.";
+  const missed = t.missed.length ? ` Missed: ${t.missed.map((g) => `${esc(g.name.split(" ")[0])} (${pct(g.risk)})`).join(", ")}.` : "";
+  return `<h1>${h}</h1><p>${when}: ${plural(t.msgs, "message", "messages")}, ${t.caught} to guests who did cancel and ${t.msgs - t.caught} to guests who came anyway.
+    Sending ${t.msgs} at random would catch about ${t.random.toFixed(1)}.${missed}${same}</p>`;
+}
+
+function summary() {
+  const y = yearTally(), checked = rp.year === "2016";
+  return `<p class="big"><span data-n="${y.caught}">${y.caught}</span> of ${y.cancelled} cancellations caught</p>
+    <p>Over ${y.mornings} mornings in ${rp.year}, with <b>${y.msgs} messages</b> (about ${(y.msgs / y.mornings).toFixed(1)} a morning).
+      Sending the same number at random would catch about <b>${Math.round(y.random)}</b>. The cancellations it caught were bookings worth <b>$${Math.round(y.value).toLocaleString("en-US")}</b>.</p>
+    <p>${checked ? "The 30% line was picked on the 2017 mornings and never tuned on these." : "The 30% line was picked on these mornings, then checked on 2016, which it had never seen."}</p>`;
+}
+const strip = () => `<div class="strip ${rp.all === "intro" ? "intro" : ""}" role="group" aria-label="One bar per morning">${rpYear().mornings.map((m, i) =>
+    `<button class="${i === rp.i ? "here" : ""}" style="--c:0;--m:0;--d:${i * 40}ms" onclick="goMorning(${i})"><i class="c"></i><i class="m"></i></button>`).join("")}</div>
+  <p class="key"><span><i class="c"></i>caught</span><span><i class="m"></i>missed</span><span>one bar per morning, tap one to open it</span></p>`;
+
+function replayTools() {
+  const ms = rpYear().mornings, v = Math.round(rp.line * 100), own = Math.round(rpYear().line * 100);
+  const y = (id, label) => `<button aria-pressed="${rp.year === id}" onclick="setYear('${id}')">${label}</button>`;
+  return `<div class="tools">
+    <div class="step"><button aria-label="Earlier morning" ${rp.i ? "" : "disabled"} onclick="goMorning(${rp.i - 1})">${ICON.left}</button>
+      <span>${esc(day(ms[rp.i].day, {weekday: "short", day: "numeric", month: "short"}))}<small>morning ${rp.i + 1} of ${ms.length}</small></span>
+      <button aria-label="Later morning" ${rp.i < ms.length - 1 ? "" : "disabled"} onclick="goMorning(${rp.i + 1})">${ICON.right}</button></div>
+    <div class="chips" role="group" aria-label="Year">${y("2017", "2017: tested")}${y("2016", "2016: checked")}</div>
+    <label class="line">Message at <output id="line-out">${v}%</output> or more
+      <input type="range" min="10" max="60" step="1" value="${v}" oninput="setLine(+this.value)" aria-label="Message guests at this risk or more">
+      <button class="rest" id="line-reset" ${v === own ? "hidden" : ""} onclick="setLine(${own}); this.previousElementSibling.value = ${own}">Back to ${own}%</button></label>
+  </div>`;
+}
+
+function replayBoard() {
+  if (!rpYear()) return "";
+  const m = rpYear().mornings[rp.i], shown = !!rp.seen[rpKey()];
+  const next = rp.i < rpYear().mornings.length - 1 ? `<button class="btn quiet" onclick="goMorning(${rp.i + 1})">Next morning ${ICON.right}</button>` : "";
+  return `<div class="act rp-act">${shown ? next : `<button class="btn" onclick="reveal()">Reveal what happened</button>`}
+      ${rp.all ? "" : `<button class="btn quiet" onclick="runAll()">Replay all ${rpYear().mornings.length} mornings</button>`}</div>
+    ${rp.all ? `<div class="sum"><div id="rp-sum">${summary()}</div>${strip()}</div>` : ""}
+    <ul class="board" id="rp-board">${COLS.replace("Status", shown ? "What happened" : "Status")}${m.guests.slice().sort((a, b) => b.risk - a.risk)
+      .map((g, i) => rpRow(g, i, shown)).join("")}</ul>`;
+}
+
+function reveal() {
+  rp.seen[rpKey()] = true;
+  $("#lede").innerHTML = replayLede();
+  renderBoard();
+  $("#rp-board").classList.add("reveal");   // the status words flip over, riskiest first
+}
+function goMorning(i) { rp.i = Math.max(0, Math.min(i, rpYear().mornings.length - 1)); render(); }
+function setLine(v) { rp.line = v / 100; $("#line-out").textContent = v + "%"; $("#line-reset").hidden = v === Math.round(rpYear().line * 100); rpPaint(); }
+function setYear(y) { rp.year = y; rp.i = null; rp.all = false; if (rpYear()) settle(); render(); }
+function runAll() {
+  rp.all = "intro"; renderBoard();
+  const big = $("#rp-sum [data-n]"), to = +big.dataset.n, t0 = performance.now();
+  if (!calm()) requestAnimationFrame(function up(t) {   // count up while the bars rise, morning by morning
+    const k = Math.min(1, (t - t0) / 1600);
+    big.textContent = Math.round(to * (1 - (1 - k) ** 3));
+    if (k < 1) requestAnimationFrame(up);
+  });
+  setTimeout(() => { rp.all = true; $(".strip")?.classList.remove("intro"); }, 1800);
+}
+
 function render() {
   $("#day").innerHTML = esc(day(data.day, {weekday: "short", day: "numeric", month: "short", year: "numeric"})) + SEP + "demo day";
   if (!data.guests.length) {
@@ -451,13 +635,15 @@ function render() {
     $("#main").innerHTML = `<div class="empty"><button class="btn" onclick="runMorning(this)">Check this morning's guests</button><p class="err" id="morning-err"></p></div>`;
     return;
   }
-  $("#lede").innerHTML = lede();
-  const t = (id, label, n) => `<button role="tab" aria-selected="${ui.tab === id}" onclick="tab('${id}')">${label}<span class="n">${n}</span></button>`;
+  if (ui.tab === "replay" && !rpYear()) getYear(rp.year).then(render).catch(() => { $("#lede").innerHTML = `<h1>Can't load the past mornings.</h1><p>Reload to try again.</p>`; });
+  $("#lede").innerHTML = ui.tab === "replay" ? replayLede() : lede();
+  const t = (id, label, n) => `<button role="tab" aria-selected="${ui.tab === id}" onclick="tab('${id}')">${label}${n === "" ? "" : `<span class="n">${n}</span>`}</button>`;
   const c = (id, label) => `<button aria-pressed="${ui.filter === id}" onclick="filter('${id}')">${label}</button>`;
   const tools = ui.tab === "bookings" ? `<div class="tools">
       <label class="find">${ICON.search}<input type="search" placeholder="Find a guest" aria-label="Find a guest" value="${esc(ui.query)}" oninput="search(this.value)"></label>
-      <div class="chips" role="group" aria-label="Show">${c("all", "All")}${c("risk", "Might not show")}${c("decided", "Decided")}${c("later", "Later")}</div></div>` : "";
-  $("#main").innerHTML = `<div class="switch" role="tablist">${t("today", "Today", flagged().length)}${t("bookings", "Bookings", data.guests.length)}</div>
+      <div class="chips" role="group" aria-label="Show">${c("all", "All")}${c("risk", "Might not show")}${c("decided", "Decided")}${c("later", "Later")}</div></div>`
+    : ui.tab === "replay" && rpYear() ? replayTools() : "";
+  $("#main").innerHTML = `<div class="switch" role="tablist">${t("today", "Today", flagged().length)}${t("bookings", "Bookings", data.guests.length)}${t("replay", "Replay", "")}</div>
     ${tools}<div id="board-slot"></div>`;
   renderBoard();
 }

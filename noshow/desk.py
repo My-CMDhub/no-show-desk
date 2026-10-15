@@ -186,6 +186,25 @@ def roi(line: float = FLAG_LINE) -> dict:
                                                    for _, d in r.groupby("day")) / mornings, 1)}
 
 
+@lru_cache
+def replay(year: str) -> dict:
+    """The 30 stored mornings of a year with what really happened, for the page to replay. Scores were made
+    from bookings before each morning only (scripts/eval_thresholds.py); the page hides the outcomes until reveal.
+    Same sample and order as morning(), so the demo morning's guests keep their names and ids."""
+    r = pd.read_csv(RISKS.with_stem(RISKS.stem + ("" if year == "2017" else f"_{year}")))
+    df = load()
+    mornings = []
+    for d, m in r.groupby("day", sort=True):
+        rows = df.loc[m.row]
+        nights = (rows.stays_in_weekend_nights + rows.stays_in_week_nights).to_numpy()
+        # risk stays unrounded: rounding to 4 places lifts a 29.996% guest over the 30% line
+        mornings.append({"day": d, "guests": [
+            {"id": f"{d}-{x.row}", "row": int(x.row), "name": NAMES[i % len(NAMES)], "risk": float(x.risk),
+             "cancelled": int(x.cancelled), "arrival": str(a.date()), "nights": int(n), "total": round(float(adr * n), 2)}
+            for i, (x, a, n, adr) in enumerate(zip(m.itertuples(), rows.arrival, nights, rows.adr))]})
+    return {"year": year, "line": FLAG_LINE, "mornings": mornings}
+
+
 if __name__ == "__main__":
     for g in morning(sys.argv[1] if len(sys.argv) > 1 else DAY):
         b = g["booking"]

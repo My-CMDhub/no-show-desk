@@ -31,6 +31,7 @@ A small motel loses a night's income every time a guest silently doesn't arrive.
 3. **Draft or Leave.** Draft writes a short message on this computer. Leave means no message.
 4. **Send or Reject.** Every date and amount in the draft has already been checked against the booking. The owner's own edits are checked again before anything goes, and Leave or Reject can be undone for a few seconds.
 5. **Bookings.** The next two weeks of arrivals, searchable, with where each one stands.
+6. **Replay.** Any of 30 real past mornings, scored before the day, then *Reveal what happened*: who really cancelled, who was caught, who was missed. A slider moves the line, and *Replay all 30 mornings* adds it up against random picks.
 
 Nothing is sent without the owner. In this demo nothing leaves the computer: Send is marked *demo: not delivered*.
 

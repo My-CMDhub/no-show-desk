@@ -118,3 +118,22 @@ def test_the_page_font_ships_with_the_app(client):
     r = client.get("/fonts/overpass-latin.woff2")
     assert r.status_code == 200 and r.content[:4] == b"wOF2"
     assert "fonts.googleapis.com" not in client.get("/").text
+
+
+def test_replay_gives_back_the_stored_mornings_with_their_real_outcomes(client):
+    year = client.get("/api/replay/2017").json()
+    guests = [g for m in year["mornings"] for g in m["guests"]]
+    flagged = [g for g in guests if g["risk"] >= 0.30]
+    assert (len(year["mornings"]), len(guests)) == (30, 600)
+    assert (sum(g["cancelled"] for g in flagged), len(flagged), sum(g["cancelled"] for g in guests)) == (111, 210, 172)
+    demo = next(m for m in year["mornings"] if m["day"] == desk.DAY)
+    chloe = demo["guests"][2]   # the same guest, id and score as on the demo morning's Today board
+    assert (chloe["name"], chloe["id"], chloe["cancelled"]) == ("Chloe Nguyen", f"{desk.DAY}-{chloe['row']}", 1)
+    assert round(chloe["risk"], 2) == 0.75 and chloe["nights"] > 0 and chloe["total"] > 0
+
+
+def test_replay_of_the_year_the_line_was_checked_on(client):
+    year = client.get("/api/replay/2016").json()
+    flagged = [g for m in year["mornings"] for g in m["guests"] if g["risk"] >= 0.30]
+    assert (sum(g["cancelled"] for g in flagged), len(flagged)) == (92, 163)
+    assert client.get("/api/replay/2015").status_code == 404

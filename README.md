@@ -81,6 +81,7 @@ On real past bookings, with the outcome hidden until scoring. Every number comes
 | Of guests flagged at 30% or more, how many really cancelled? | **53%**, against 29% of all guests | 210 flags over 30 mornings | [thresholds.md](results/thresholds.md) |
 | How many of all cancellations did the flags catch? | **111 of 172**; picking the same number at random: 64 | 600 guests | [thresholds.md](results/thresholds.md) |
 | Ranking with a motel-sized history | TabPFN ahead of gradient boosting at 300, 1,000 and 3,000 past bookings (0.766 vs 0.702 ROC-AUC at 1,000) | 3 histories per size | [small_history.md](results/small_history.md) |
+| Against a plain logistic regression | TabPFN ahead in 9 of 9 small-history runs by 2–3 ROC-AUC points; on the 30 mornings, 111 caught against 106 at the same number of messages | same tests | [logistic.md](results/logistic.md) |
 | Wrong facts when the model works out dates itself | **13 of 100** drafts | 50 bookings × 2 | [drafts.md](results/drafts.md) |
 | Wrong facts when code hands it the facts | **0 of 100**, every draft also read by hand | 50 bookings × 2 | [drafts_reconfirm.md](results/drafts_reconfirm.md) |
 | Gemma in the browser (WebGPU) | **0 of 100** wrong facts; 3.25 s per draft, against 31.4 s through Ollama on the same Mac | 50 bookings × 2 | [drafts_browser.md](results/drafts_browser.md) |
@@ -144,6 +145,7 @@ The page loads the model onto the graphics chip (about 10 s from disk), drafts 2
 .venv/bin/python scripts/eval_risk.py          # risk models on 2017 bookings
 .venv/bin/python scripts/eval_small_history.py # motel-sized histories
 .venv/bin/python scripts/eval_thresholds.py    # 30 mornings: the 30% line against top 5 and random
+.venv/bin/python scripts/eval_logistic.py      # the same tests against a plain logistic regression (no API)
 .venv/bin/python scripts/eval_drafts.py 50 2   # model works out the facts, or code hands them over
 ```
 

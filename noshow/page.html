@@ -247,6 +247,7 @@
   .g-ticks li { display: inline-flex; gap: 5px; align-items: center; }
   .g-ticks li.new { animation: show .4s var(--ease) backwards; }
   .g-ticks svg { color: var(--ok); }
+  .g-note { margin: 2px 0 0 !important; color: var(--muted); font-size: 13px; }
   @media (max-width: 380px) { .g-cell { font-size: 12.5px; } .g-board { padding: 10px; } }
   .dlg .act { justify-content: flex-start; }
   .dlg > p.err { color: var(--warn); margin: 10px 0 0; }
@@ -736,6 +737,7 @@ function board(s) {
       <div class="g-flaps">${flapCells(top) + pad(top.length)}</div><div class="g-flaps">${second}</div>
       <div class="g-rail ${s === "load" ? "wait" : ""}"><i id="gem-rail" style="width:${s === "check" || s === "ready" ? 100 : 0}%"></i></div></div>
     <p class="g-cap" id="gem-cap">${cap}</p>
+    ${s === "load" ? `<p class="g-note">The browser may stop responding for a while during or just after this. It did on our 8 GB test Mac, then carried on.</p>` : ""}
     ${done.length ? `<ul class="g-ticks">${done.map((t, i) => `<li class="${i === done.length - 1 ? "new" : ""}">${svg('<path d="M20 6 9 17l-5-5"/>', 13)}${t}</li>`).join("")}</ul>` : ""}`;
 }
 
@@ -771,7 +773,8 @@ function paintGem() {   // the frame stays; only the parts that change are redra
     <div><dt>From</dt><dd>Model: <a href="${GEM.page}" target="_blank" rel="noopener">Hugging Face, litert-community</a>, Apache 2.0 licence, ${GEM.bytes.toLocaleString("en-US")} bytes.
       Library: <a href="https://github.com/google-ai-edge/LiteRT-LM" target="_blank" rel="noopener">LiteRT-LM</a> 0.18.0 from jsDelivr.</dd></div>
     <div><dt>Kept</dt><dd>${where}</dd></div>
-    <div><dt>Sent out</dt><dd>Only the finished message, to this desk, which checks every date and amount against the booking.</dd></div>`;
+    <div><dt>Sent out</dt><dd>Only the finished message, to this desk, which checks every date and amount against the booking.</dd></div>
+    <div><dt>Heads up</dt><dd>It is heavy work for a browser. When we tested it on an 8 GB M2 Mac, the browser stopped responding for a while after loading, then carried on.</dd></div>`;
   if (gem.painted !== s) {   // a new step: the board flips to it
     $("#gem-stage").innerHTML = running || s === "failed" ? board(s) : "";
     $("#gem-say").textContent = {download: "Downloading Gemma, 2.0 GB", check: "Checking the file", load: "Loading onto the graphics chip",

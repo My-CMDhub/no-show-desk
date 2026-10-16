@@ -685,7 +685,7 @@ function paintMeter() {   // in place, many times a second: digits roll, the rai
   const secs = (performance.now() - gem.t0) / 1000, rate = gem.got / Math.max(secs, 0.1), left = (GEM.bytes - gem.got) / Math.max(rate, 1);
   roll($("#gem-num"), Math.round(gem.got / 1e6));
   $("#gem-rail").style.width = (100 * gem.got / GEM.bytes).toFixed(1) + "%";
-  $("#gem-cap").textContent = `${MB(gem.got)} of ${GB(GEM.bytes)}` + (secs > 2 ? ` · ${MB(rate)}/s · about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.ceil(left) + " s"} left` : "");
+  $("#gem-cap").textContent = `${MB(gem.got)} of ${GB(GEM.bytes)}` + (secs > 2 ? `, ${MB(rate)}/s, about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.ceil(left) + " s"} left` : "");
 }
 let loadTimer = 0;
 function loadClock() {   // the load can't report progress, so the board shows honest elapsed seconds instead
@@ -694,7 +694,7 @@ function loadClock() {   // the load can't report progress, so the board shows h
     if (gem.step !== "load" || !$("#gem-num")) return clearInterval(loadTimer);
     const s = (performance.now() - gem.t0) / 1000;
     roll($("#gem-num"), Math.floor(s));
-    $("#gem-cap").textContent = `${gem.saved ? "Found on this device. " : ""}Moving it onto your graphics chip · ${s.toFixed(1)} s, usually about 10`;
+    $("#gem-cap").textContent = `${gem.saved ? "Found on this device. " : ""}Moving it onto your graphics chip: ${s.toFixed(1)} s, usually about 10`;
   }, 100);
 }
 async function forgetGem() {

@@ -89,3 +89,13 @@ def test_the_brief_carries_facts_worked_out_in_code():
     app, cfg, _ = run(lambda b: seen.append(b) or GOOD)
     app.invoke(Command(resume="draft"), cfg)
     assert "Total: $286.50" in seen[0] and "Free cancellation until: Wednesday 8 March" in seen[0]
+
+
+def test_a_draft_written_in_the_browser_is_checked_and_never_redrafted_here():
+    calls = []
+    app, cfg, _ = run(lambda b: calls.append(b) or GOOD)
+    out = app.invoke(Command(resume={"decision": "draft", "text": GOOD, "by": "browser"}), cfg)
+    assert stage(out) == "review" and out["draft"] == GOOD and out["problems"] == [] and out["by"] == "browser"
+    app, cfg, _ = run(lambda b: calls.append(b) or GOOD, thread="t2")
+    out = app.invoke(Command(resume={"decision": "draft", "text": GOOD.replace("$286.50", "$290.00"), "by": "browser"}), cfg)
+    assert stage(out) == "review" and out["problems"] and calls == []   # no model here: the owner sees the problem

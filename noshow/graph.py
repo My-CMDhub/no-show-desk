@@ -22,6 +22,8 @@ class Desk(TypedDict, total=False):
     draft: str
     problems: list[str]
     attempts: int
+    offered: str | None  # a draft written elsewhere (the owner's browser), handed in with Draft
+    by: str              # who wrote the draft: "desk" (Ollama here) | "browser" | "recorded"
     final: str
     sent: dict           # what the sender reported: channel, address, time
     outcome: str         # "left" | "sent" | "rejected"
@@ -30,13 +32,17 @@ class Desk(TypedDict, total=False):
 def build(sender: Callable[[dict, str], dict], writer: Callable[[str], str] = write_draft, checkpointer=None):
     # Nodes with a pause re-run from their top on resume, so they do nothing before interrupt().
     def choose(s: Desk) -> dict:
-        answer = interrupt({"stage": "choose"})          # "draft" | "leave"
-        return {"outcome": "left"} if answer == "leave" else {}
+        answer = interrupt({"stage": "choose"})          # "draft" | "leave" | {"decision": "draft", "text", "by"}
+        if isinstance(answer, dict):
+            return {"offered": answer["text"], "by": answer.get("by", "browser")}
+        return {"outcome": "left"} if answer == "leave" else {"by": "desk"}
 
     def facts(s: Desk) -> dict:
         return {"facts": work_out_facts(s["booking"])}
 
     def draft(s: Desk) -> dict:
+        if s.get("offered"):   # written in the browser: no model here to redraft it, so it goes to the owner as checked
+            return {"draft": s["offered"], "offered": None, "attempts": MAX_DRAFTS}
         text = writer(facts_brief(s["facts"]))
         return {"draft": text, "attempts": s.get("attempts", 0) + 1}
 

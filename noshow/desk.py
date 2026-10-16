@@ -9,7 +9,7 @@ from functools import lru_cache
 import sqlite3
 import sys
 import threading
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +19,7 @@ from langgraph.types import Command
 
 from noshow.check import check_draft
 from noshow.data import FEATURES, TARGET, load
+from noshow.draft import SYSTEM, facts_brief
 from noshow.graph import build
 from noshow.facts import work_out_facts
 from noshow.reasons import CHANNELS, reasons
@@ -27,6 +28,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "data/desk.sqlite"
 OUTBOX = ROOT / "data/outbox.jsonl"
 RISKS = ROOT / "results/morning_risks.csv"   # 30 test mornings, every guest's score (scripts/eval_thresholds.py)
+SNAPSHOT = ROOT / "results/demo_snapshot.json"   # the demo morning, replays and recorded drafts (scripts/snapshot.py)
+# Hosted: no dataset, no TabPFN key, no Ollama. Everything comes from the snapshot, each visitor gets their own
+# copy of the demo morning, and drafts are written in the visitor's browser.
+HOSTED = os.getenv("HOSTED") == "1"
 # The data ends in 2017, so the demo motel lives on a fixed day: the earliest of the 30 test mornings that
 # flagged the average number of guests (7), with that morning's own sample, so the demo is a measured morning.
 DAY = os.getenv("DEMO_DAY", "2017-02-01")
@@ -74,14 +79,32 @@ def mock_send(booking: dict, text: str) -> dict:
 
 def app(db: Path = DB, **kw):
     db.parent.mkdir(exist_ok=True)
-    return build(**{"sender": mock_send, **kw}, checkpointer=SqliteSaver(sqlite3.connect(db, check_same_thread=False)))
+    saver = SqliteSaver(sqlite3.connect(db, check_same_thread=False))
+    saver.setup()   # tables now, not at the first save: a fresh host lists guests before anything is saved
+    return build(**{"sender": mock_send, **kw}, checkpointer=saver)
 
 
-def morning(today: str, desk=None, seed: int = SEED) -> list[dict]:
+@lru_cache
+def snapshot() -> dict:
+    return json.loads(SNAPSHOT.read_text())
+
+
+def tid(visitor: str, booking_id: str) -> str:
+    """Graph run id: the booking id, behind the visitor's id when hosted (one desk per visitor)."""
+    return f"{visitor}~{booking_id}" if visitor else booking_id
+
+
+def morning(today: str, desk=None, seed: int = SEED, visitor: str = "") -> list[dict]:
     """Score the next few days' arrivals and start one graph run per booking. Runs once per day."""
     desk = desk or app()
-    if guests(today, desk):
-        return guests(today, desk)
+    if guests(today, desk, visitor):
+        return guests(today, desk, visitor)
+    if HOSTED:   # the demo morning as scored on the owner's Mac (same bookings, same scores)
+        for st in snapshot()["morning"]:
+            b = {**st["booking"], "today": date.fromisoformat(st["booking"]["today"]),
+                 "arrival": date.fromisoformat(st["booking"]["arrival"])}
+            desk.invoke({**st, "booking": b}, {"configurable": {"thread_id": tid(visitor, b["id"])}})
+        return guests(today, desk, visitor)
     from tabpfn_client import TabPFNClassifier, set_access_token
     load_dotenv(ROOT / ".env")
     set_access_token(os.environ["TABPFN_API_KEY"])
@@ -115,16 +138,17 @@ def morning(today: str, desk=None, seed: int = SEED) -> list[dict]:
         flagged = bool(booking["due"] and risk >= FLAG_LINE)   # later bookings are listed, not messaged yet
         desk.invoke({"booking": booking, "risk": float(risk), "flagged": flagged,
                      "reasons": reasons(row, history) if risk >= FLAG_LINE else []},
-                    {"configurable": {"thread_id": booking["id"]}})
+                    {"configurable": {"thread_id": tid(visitor, booking["id"])}})
     return guests(today, desk)
 
 
-def guests(today: str, desk=None) -> list[dict]:
+def guests(today: str, desk=None, visitor: str = "") -> list[dict]:
     """Every booking of the day with where it stands, riskiest first."""
     desk = desk or app()
-    # ponytail: scans every checkpoint; fine for one motel, index thread ids by day if it grows
-    threads = {c.config["configurable"]["thread_id"] for c in desk.checkpointer.list(None)}
-    return sorted((guest(t, desk) for t in threads if t.startswith(f"{today}-")), key=lambda g: -g["risk"])
+    start = tid(visitor, f"{today}-")
+    threads = [t for (t,) in desk.checkpointer.conn.execute(   # thread ids only: cheap with many hosted visitors
+        "SELECT DISTINCT thread_id FROM checkpoints WHERE substr(thread_id, 1, ?) = ?", (len(start), start))]
+    return sorted((guest(t, desk) for t in threads), key=lambda g: -g["risk"])
 
 
 def guest(thread: str, desk) -> dict:
@@ -136,9 +160,17 @@ def guest(thread: str, desk) -> dict:
     return g
 
 
-def act(thread: str, action: str, text: str | None = None, desk=None, anyway: bool = False) -> dict:
+def brief(thread: str, desk=None) -> dict:
+    """What the browser's Gemma needs to write this guest's message, and the draft recorded on the owner's Mac."""
+    g = guest(thread, desk or app())
+    rec = snapshot().get("recorded", {}).get(g["booking"]["id"]) if SNAPSHOT.exists() else None
+    return {"system": SYSTEM, "brief": facts_brief(g["facts"]), "recorded": rec}
+
+
+def act(thread: str, action: str, text: str | None = None, desk=None, anyway: bool = False, by: str | None = None) -> dict:
     """Resume a paused run with the owner's choice. Refuses a choice the run isn't waiting for, and checks
-    the owner's own wording the same way the model's draft was checked."""
+    the owner's own wording the same way the model's draft was checked. Draft can bring its own text, written
+    in the owner's browser (by="browser") or the one recorded earlier on the owner's Mac (by="recorded")."""
     desk = desk or app()
     with _LOCKS.setdefault(thread, threading.Lock()):
         g = guest(thread, desk)
@@ -152,6 +184,13 @@ def act(thread: str, action: str, text: str | None = None, desk=None, anyway: bo
             if problems and not anyway:
                 raise NeedsOwner(problems)
         answer = {"decision": "send", "text": text} if action == "send" and text else action
+        if action == "draft" and by == "recorded":   # the server's own copy, never text sent by the page
+            rec = brief(thread, desk)["recorded"]
+            if not rec:
+                raise ValueError(f"{thread} has no recorded draft")
+            answer = {"decision": "draft", "text": rec["text"], "by": "recorded"}
+        elif action == "draft" and text:
+            answer = {"decision": "draft", "text": text.strip(), "by": "browser"}
         desk.invoke(Command(resume=answer), {"configurable": {"thread_id": thread}})
         return guest(thread, desk)
 
@@ -170,8 +209,12 @@ def at_risk(day_guests: list[dict]) -> dict:
     return {"guests": len(flagged), "total": f"${sum(g['facts']['amount'] for g in flagged):,.2f}"}
 
 
+def roi() -> dict:
+    return snapshot()["roi"] if HOSTED else live_roi()
+
+
 @lru_cache
-def roi(line: float = FLAG_LINE) -> dict:
+def live_roi(line: float = FLAG_LINE) -> dict:
     """What this line did on the 30 test mornings: historical data, not a live motel."""
     r = pd.read_csv(RISKS)
     df = load()
@@ -186,8 +229,12 @@ def roi(line: float = FLAG_LINE) -> dict:
                                                    for _, d in r.groupby("day")) / mornings, 1)}
 
 
-@lru_cache
 def replay(year: str) -> dict:
+    return snapshot()["replay"][year] if HOSTED else live_replay(year)
+
+
+@lru_cache
+def live_replay(year: str) -> dict:
     """The 30 stored mornings of a year with what really happened, for the page to replay. Scores were made
     from bookings before each morning only (scripts/eval_thresholds.py); the page hides the outcomes until reveal.
     Same sample and order as morning(), so the demo morning's guests keep their names and ids."""

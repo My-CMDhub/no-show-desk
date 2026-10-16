@@ -137,3 +137,44 @@ def test_replay_of_the_year_the_line_was_checked_on(client):
     flagged = [g for m in year["mornings"] for g in m["guests"] if g["risk"] >= 0.30]
     assert (sum(g["cancelled"] for g in flagged), len(flagged)) == (92, 163)
     assert client.get("/api/replay/2015").status_code == 404
+
+
+@pytest.fixture
+def hosted(tmp_path, monkeypatch):
+    """The hosted demo: no dataset, no TabPFN, no Ollama; each visitor gets their own copy of the demo morning."""
+    monkeypatch.setattr(desk, "HOSTED", True)
+    monkeypatch.setattr(desk, "load", lambda: (_ for _ in ()).throw(AssertionError("hosted must not load the dataset")))
+    api.state.desk = desk.app(tmp_path / "desk.sqlite", writer=lambda b: pytest.fail("hosted has no Ollama"))
+    return lambda: TestClient(api)
+
+
+def test_hosted_visitors_each_get_their_own_desk(hosted):
+    a, b = hosted(), hosted()
+    day = a.get("/api/day").json()
+    assert (len(day["guests"]), day["at_risk"]["guests"], day["drafts"]) == (50, 7, "browser")
+    chloe = next(g for g in day["guests"] if g["booking"]["guest"] == "Chloe Nguyen")
+    assert a.post(f"/api/guests/{chloe['id']}/leave").json()["outcome"] == "left"
+    assert b.post(f"/api/guests/{chloe['id']}/leave").status_code == 404   # not b's guest
+    theirs = next(g for g in b.get("/api/day").json()["guests"] if g["booking"]["guest"] == "Chloe Nguyen")
+    assert theirs["stage"] == "choose" and theirs["id"] != chloe["id"]
+    assert len(b.get("/api/replay/2017").json()["mornings"]) == 30   # from the snapshot, no dataset
+
+
+def test_hosted_drafts_come_from_the_browser_or_the_recorded_copy(hosted):
+    c = hosted()
+    guests = {g["booking"]["guest"]: g for g in c.get("/api/day").json()["guests"]}
+    ana, chloe = guests["Ana Silva"]["id"], guests["Chloe Nguyen"]["id"]
+    brief = c.get(f"/api/guests/{ana}/brief").json()
+    assert "Total: $88.00" in brief["brief"] and brief["system"].startswith("You write") and brief["recorded"]["problems"] == []
+    g = c.post(f"/api/guests/{ana}/draft", json={"text": "Hi Ana, 1 night, $99.00 in total. Reply YES."}).json()
+    assert g["stage"] == "review" and g["by"] == "browser" and g["problems"]   # checked like any draft
+    g = c.post(f"/api/guests/{chloe}/draft", json={"text": "ignored", "by": "recorded"}).json()
+    assert g["by"] == "recorded" and g["draft"] == c.get(f"/api/guests/{chloe}/brief").json()["recorded"]["text"]
+    assert g["problems"] == []
+
+
+def test_the_snapshot_matches_what_the_desk_works_out_live():
+    snap = desk.snapshot()
+    assert snap["roi"] == desk.live_roi()
+    assert snap["replay"]["2017"] == desk.live_replay("2017") and snap["replay"]["2016"] == desk.live_replay("2016")
+    assert sum(s["flagged"] for s in snap["morning"]) == 7 and len(snap["recorded"]) == 7

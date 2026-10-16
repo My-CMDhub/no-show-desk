@@ -1,0 +1,16 @@
+# The hosted demo on Render's free plan: no dataset, no TabPFN key, no Ollama. Everything comes from
+# results/demo_snapshot.json, each visitor gets their own copy of the demo morning, and drafts are written
+# by Gemma in the visitor's browser (or the recorded copy). Free instances sleep after 15 idle minutes.
+services:
+  - type: web
+    name: no-show-desk
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m noshow.app
+    healthCheckPath: /api/replay/2017
+    envVars:
+      - key: HOSTED
+        value: "1"
+      - key: PYTHON_VERSION
+        value: "3.12.7"

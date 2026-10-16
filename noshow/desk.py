@@ -25,13 +25,13 @@ from noshow.facts import work_out_facts
 from noshow.reasons import CHANNELS, reasons
 
 ROOT = Path(__file__).resolve().parents[1]
-DB = ROOT / "data/desk.sqlite"
 OUTBOX = ROOT / "data/outbox.jsonl"
 RISKS = ROOT / "results/morning_risks.csv"   # 30 test mornings, every guest's score (scripts/eval_thresholds.py)
 SNAPSHOT = ROOT / "results/demo_snapshot.json"   # the demo morning, replays and recorded drafts (scripts/snapshot.py)
 # Hosted: no dataset, no TabPFN key, no Ollama. Everything comes from the snapshot, each visitor gets their own
 # copy of the demo morning, and drafts are written in the visitor's browser.
 HOSTED = os.getenv("HOSTED") == "1"
+DB = ROOT / ("data/hosted.sqlite" if HOSTED else "data/desk.sqlite")   # hosted visitors never touch the owner's desk
 # The data ends in 2017, so the demo motel lives on a fixed day: the earliest of the 30 test mornings that
 # flagged the average number of guests (7), with that morning's own sample, so the demo is a measured morning.
 DAY = os.getenv("DEMO_DAY", "2017-02-01")

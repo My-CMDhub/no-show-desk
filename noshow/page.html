@@ -136,6 +136,7 @@
   .verdict.warn { color: var(--warn); }
   .bar { height: 3px; border-radius: 2px; background: var(--rule); overflow: hidden; margin: 6px 0 10px; }
   .bar i { display: block; height: 100%; width: 4%; background: var(--ink); animation: grow 34s var(--ease) forwards; }
+  .bar.quick i { animation-duration: 5s; }
   @keyframes grow { to { width: 94%; } }
   .sent { display: flex; gap: 8px; align-items: flex-start; color: var(--ok); font-weight: 600; }
   .sent .tag { display: inline-block; margin-top: 4px; }
@@ -190,6 +191,45 @@
   .key { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; margin: 0; color: var(--muted); font-size: 13px; }
   .key i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 
+  /* Gemma in the browser: one honest screen, every step driven by a real event */
+  .top-r { display: flex; gap: 8px; align-items: center; }
+  .gem-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 99px;
+              border: 1px solid var(--rule-strong); background: none; color: var(--muted); white-space: nowrap; }
+  .gem-chip em { font-style: normal; }
+  .gem-chip i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; }
+  .gem-chip.on { color: var(--ink); }
+  .gem-chip.on i { background: var(--ok); border-color: var(--ok); }
+  dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--rule);
+           border-radius: 12px; background: var(--row); color: var(--ink); box-shadow: 0 24px 60px -20px rgba(0,0,0,.45); }
+  dialog::backdrop { background: rgba(10, 12, 13, .45); }
+  dialog[open] { animation: rise .32s var(--ease); }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  .dlg { padding: 22px 22px 18px; }
+  .dlg h2 { margin: 0 0 6px; font-size: 21px; line-height: 1.2; font-weight: 800; letter-spacing: -0.01em; }
+  .dlg > p { margin: 0 0 14px; color: var(--muted); }
+  .facts { margin: 0 0 16px; border-top: 1px solid var(--rule); }
+  .facts div { display: grid; grid-template-columns: 112px 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+  .facts dt { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 600; padding-top: 2px; }
+  .facts dd { margin: 0; }
+  .facts a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--rule-strong); }
+  .steps { list-style: none; margin: 0 0 16px; padding: 0; }
+  .steps li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 7px 0; color: var(--muted); }
+  .steps .dot { width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--rule-strong); display: grid; place-items: center; }
+  .steps li.now { color: var(--ink); }
+  .steps li.now .dot { border-color: var(--ink); animation: breathe 1.4s ease-in-out infinite; }
+  .steps li.done { color: var(--ink); }
+  .steps li.done .dot { border-color: var(--ok); background: var(--ok); color: var(--row); }
+  .steps li.bad .dot { border-color: var(--warn); }
+  .steps b { font-weight: 600; }
+  .steps small { display: block; color: var(--muted); font-size: 13px; }
+  @keyframes breathe { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ink) 14%, transparent); } }
+  .meter { height: 6px; margin: 7px 0 3px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 3px; transition: width .25s linear; }
+  .dlg .act { justify-content: flex-start; }
+  .dlg .fine { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+  .by { margin: -4px 0 12px !important; color: var(--muted); font-size: 13px; }
+  @media (max-width: 480px) { .facts div { grid-template-columns: 1fr; gap: 2px; } .gem-chip em { display: none; } }
+
   .empty { padding: 28px 0; }
   .empty p { margin: 0 0 14px; color: var(--muted); max-width: 52ch; }
   .rest { display: inline-flex; align-items: center; gap: 6px; margin: 16px 4px 0; padding: 0; border: 0; background: none; color: var(--muted);
@@ -214,7 +254,8 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .fold, .chev, .btn, .strip i { transition: none; }
-    .reveal .flip { animation: none; }
+    .reveal .flip, dialog[open], .steps li.now .dot { animation: none; }
+    .meter i { transition: none; }
     .bar i { animation: none; width: 60%; }
   }
 </style>
@@ -223,11 +264,12 @@
 <div class="wrap">
   <header class="top">
     <div class="brand"><i aria-hidden="true"></i>No-Show Desk</div>
-    <span class="demo" id="day"></span>
+    <div class="top-r"><span id="gem-slot"></span><span class="demo" id="day"></span></div>
   </header>
+  <dialog id="gem" aria-labelledby="gem-title"></dialog>
   <section class="lede" id="lede" aria-live="polite"></section>
   <div id="main"></div>
-  <footer>Demo motel built on real 2017 bookings from two Portuguese hotels (Antonio, Almeida &amp; Nunes, 2019, CC BY 4.0). Guest names and contacts are made up; prices are shown in dollars. Nothing is sent to anyone.</footer>
+  <footer>Demo motel built on real 2017 bookings from two Portuguese hotels (Antonio, Almeida &amp; Nunes, 2019, CC BY 4.0). Guest names and contacts are made up; prices are shown in dollars. Nothing is sent to anyone. <span id="again"></span></footer>
 </div>
 
 <script>
@@ -289,7 +331,8 @@ function advance() {   // after a decision, unfold the next guest who still need
 }
 
 async function act(id, action, opts = {}) {
-  const body = action === "send" ? JSON.stringify({text: edits[id] ?? data.guests.find((g) => g.id === id).draft, anyway: !!opts.anyway}) : undefined;
+  const body = action === "send" ? JSON.stringify({text: edits[id] ?? data.guests.find((g) => g.id === id).draft, anyway: !!opts.anyway})
+    : action === "draft" && (opts.text || opts.by) ? JSON.stringify({text: opts.text, by: opts.by}) : undefined;
   busy[id] = action; delete errors[id]; render();
   try {
     const r = await fetch(`/api/guests/${encodeURIComponent(id)}/${action}`,
@@ -302,7 +345,7 @@ async function act(id, action, opts = {}) {
     } else if (r.status === 422) {
       needYes[id] = (await r.json()).detail.problems;
     } else if (r.status === 409) { await load(); errors[id] = "Already decided on another screen. This is where it stands now."; }
-    else errors[id] = action === "draft" ? "The draft didn't finish. Check that Ollama is running, then try again." : "That didn't go through. Try again.";
+    else errors[id] = action === "draft" && !browserDrafts() ? "The draft didn't finish. Check that Ollama is running, then try again." : "That didn't go through. Try again.";
   } catch { errors[id] = "Lost contact with the desk. Is it still running?"; }
   delete busy[id];
   const done = data.guests.find((g) => g.id === id)?.outcome;
@@ -403,8 +446,8 @@ function action(g) {
   const b = g.booking, how = b.contact.channel === "email" ? "email" : "WhatsApp", off = busy[g.id] ? "disabled" : "";
   if (pending[g.id]) return `<div class="act"><p class="note">${pending[g.id].action === "leave" ? "Left alone: no message." : "Draft rejected: nothing sent."}</p>
     <button class="btn quiet" onclick="undo('${g.id}')">Undo</button></div>`;
-  if (busy[g.id] === "draft") return `<h3>Writing the message</h3><div class="bar" role="progressbar" aria-label="Writing"><i></i></div>
-    <p class="note">Gemma is writing it on this computer. About 30 seconds.</p>`;
+  if (busy[g.id] === "draft") return `<h3>Writing the message</h3><div class="bar ${browserDrafts() ? "quick" : ""}" role="progressbar" aria-label="Writing"><i></i></div>
+    <p class="note">${browserDrafts() ? "Gemma is writing it in this browser. A few seconds." : "Gemma is writing it on this computer. About 30 seconds."}</p>`;
   if (g.outcome === "sent") return `<p class="sent">${ICON.check}<span>Sent by ${esc(g.sent.channel === "email" ? "email" : g.sent.channel)} to ${esc(g.sent.to)} at ${esc(g.sent.at)} <span class="tag">demo: not delivered</span></span></p>
     <blockquote>${esc(g.final)}</blockquote>`;
   if (g.outcome === "left") return `<p class="note">Left alone: no message needed.</p>`;
@@ -416,11 +459,13 @@ function action(g) {
       : `<p class="verdict ok">${ICON.check}<span>Dates, nights and total match the booking.</span></p>`;
     const send = yes ? `<button class="btn" ${off} onclick="act('${g.id}','send',{anyway:true})">${ICON.send} Send anyway</button>`
       : `<button class="btn" ${off} onclick="act('${g.id}','send')">${ICON.send} Send by ${how}</button>`;
+    const by = g.by === "browser" ? `Written by Gemma in this browser${wrote[g.id] ? ` in ${wrote[g.id].toFixed(1)} s` : ""}.`
+      : g.by === "recorded" ? "Written earlier by Gemma on the owner's Mac, and checked again here." : "";
     return `<h3><label for="t-${g.id}">Message to ${esc(b.guest.split(" ")[0])}</label></h3>
-      <textarea id="t-${g.id}" oninput="edited('${g.id}', this)">${esc(edits[g.id] ?? g.draft)}</textarea>${v}
+      <textarea id="t-${g.id}" oninput="edited('${g.id}', this)">${esc(edits[g.id] ?? g.draft)}</textarea>${v}${by ? `<p class="by">${by}</p>` : ""}
       <div class="act">${send}<button class="btn quiet" ${off} onclick="soon('${g.id}','reject')">Reject draft</button></div>`;
   }
-  if (g.flagged) return `<div class="act"><button class="btn" ${off} onclick="act('${g.id}','draft')">${ICON.pen} Draft a message</button>
+  if (g.flagged) return `<div class="act"><button class="btn" ${off} onclick="${browserDrafts() ? `draftHere('${g.id}')` : `act('${g.id}','draft')`}">${ICON.pen} Draft a message</button>
     <button class="btn quiet" ${off} onclick="soon('${g.id}','leave')">Leave</button></div>
     <p class="note hint">The message asks them to confirm, or to say if their plans changed. Leave means no message.</p>`;
   return `<p class="note">${b.due === false ? `Arrives after the next ${data.days_ahead} days. The desk checks it again closer to the day.`
@@ -483,6 +528,161 @@ function renderBoard() {
     : `<div class="empty"><p>No bookings match. Try another name or filter.</p></div>`;
   fit();
 }
+
+// Gemma in the browser. The page downloads the model once from its public Hugging Face page, keeps it in this
+// site's private browser storage (OPFS), and runs it on the graphics chip with LiteRT-LM. Every step the screen
+// shows is a real event: bytes counted as they arrive, the exact size checked, the load timed.
+const GEM = {
+  page: "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm",
+  url: "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.litertlm",
+  file: "gemma-4-E2B-it-web.litertlm", bytes: 2008432640,   // the published size, checked after download
+  lib: "https://cdn.jsdelivr.net/npm/@litert-lm/core@0.18.0/+esm",
+};
+let gem = {step: "ask", got: 0, t0: 0, secs: 0, kept: null, error: "", engine: null, for: null, abort: null};
+let gemQueue = Promise.resolve(), wrote = {};
+const browserDrafts = () => data?.drafts === "browser";
+const GB = (n) => (n / 1e9).toFixed(1) + " GB", MB = (n) => Math.round(n / 1e6).toLocaleString("en-US") + " MB";
+
+async function savedModel() {   // the copy kept by an earlier visit, if it's whole
+  try {
+    const f = await (await (await navigator.storage.getDirectory()).getFileHandle(GEM.file)).getFile();
+    return f.size === GEM.bytes ? f : null;
+  } catch { return null; }
+}
+async function roomToKeep() {
+  try { const {quota, usage} = await navigator.storage.estimate(); return quota - usage > GEM.bytes * 1.05; } catch { return false; }
+}
+
+async function openGem(forId = null) {
+  gem.for = forId ?? gem.for;
+  if (gem.step === "ask" || gem.step === "failed") {
+    gem.step = !navigator.gpu ? "nogpu" : "ask";
+    gem.saved = navigator.gpu ? await savedModel() : null;
+    gem.kept = gem.saved ? true : await roomToKeep();
+  }
+  paintGem();
+  if (!$("#gem").open) $("#gem").showModal();
+}
+
+async function startGem() {
+  const ctl = new AbortController();
+  gem.abort = ctl; gem.error = ""; gem.got = 0; gem.streaming = false;
+  try {
+    let model = gem.saved;
+    if (!model) {
+      gem.step = "download"; gem.t0 = performance.now(); paintGem();
+      const res = await fetch(GEM.url, {signal: ctl.signal});
+      if (!res.ok) throw new Error(`the download was refused (${res.status})`);
+      const size = +res.headers.get("content-length");
+      if (size !== GEM.bytes) throw new Error(`the server offers ${size.toLocaleString("en-US")} bytes, not the published ${GEM.bytes.toLocaleString("en-US")}`);
+      const count = new TransformStream({transform(chunk, c) { gem.got += chunk.byteLength; tick(); c.enqueue(chunk); }});
+      const body = res.body.pipeThrough(count);
+      if (gem.kept) {   // stream to private storage, then hand the stored file to the engine
+        const handle = await (await navigator.storage.getDirectory()).getFileHandle(GEM.file, {create: true});
+        await body.pipeTo(await handle.createWritable(), {signal: ctl.signal});
+        model = await handle.getFile();
+        gem.step = "check"; paintGem();
+        if (model.size !== GEM.bytes) throw new Error(`got ${model.size.toLocaleString("en-US")} bytes, expected ${GEM.bytes.toLocaleString("en-US")}`);
+      } else { model = body; gem.streaming = true; }   // no room to keep it: the engine reads the download as it arrives
+    }
+    if (!gem.streaming) { gem.step = "load"; gem.t0 = performance.now(); paintGem(); }
+    const {Engine} = await import(GEM.lib);
+    gem.engine = await Engine.create({model});
+    // Streaming: the size was checked from the server's header above; the engine can finish before reading the last bytes.
+    gem.secs = (performance.now() - gem.t0) / 1000; gem.step = "ready"; gem.stored = !!(gem.saved || gem.kept);
+    paintGem(); renderGemChip();
+    const id = gem.for; gem.for = null;
+    if (id) { setTimeout(() => $("#gem").close(), 900); draftHere(id); }
+  } catch (e) {
+    gem.step = ctl.signal.aborted ? "ask" : "failed";
+    gem.error = ctl.signal.aborted ? "" : String(e?.message || e);
+    paintGem();
+  }
+}
+let ticking = false;
+function tick() { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; paintMeter(); }); } }
+function paintMeter() {
+  if (gem.streaming && gem.step === "download" && gem.got >= GEM.bytes * 0.999) {   // the engine has the model; now loading
+    gem.step = "load"; gem.t0 = performance.now(); return paintGem();
+  }
+  const el = $("#gem-meter");
+  if (!el) return;
+  const secs = (performance.now() - gem.t0) / 1000, rate = gem.got / Math.max(secs, 0.1), left = (GEM.bytes - gem.got) / Math.max(rate, 1);
+  el.querySelector("i").style.width = (100 * gem.got / GEM.bytes).toFixed(1) + "%";
+  $("#gem-bytes").textContent = `${MB(gem.got)} of ${GB(GEM.bytes)}` + (secs > 2 ? `, ${MB(rate)}/s, about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.ceil(left) + " s"} left` : "");
+}
+async function forgetGem() {
+  try { await (await navigator.storage.getDirectory()).removeEntry(GEM.file); } catch {}
+  gem = {...gem, step: "ask", saved: null, stored: false, engine: null};
+  await openGem(); renderGemChip();
+}
+
+function paintGem() {
+  const s = gem.step, order = ["download", "check", "load", "ready"];
+  const at = (k) => s === "failed" ? "" : order.indexOf(s) > order.indexOf(k) || s === "ready" ? "done" : s === k ? "now" : "";
+  const dot = (k) => `<span class="dot">${at(k) === "done" ? svg('<path d="M20 6 9 17l-5-5"/>', 12) : ""}</span>`;
+  const first = gem.saved ? `<b>Found on this computer</b><small>Kept from an earlier visit: ${GB(GEM.bytes)}, no download.</small>`
+    : `<b>Download ${GB(GEM.bytes)}</b><small id="gem-bytes">${s === "download" ? "Starting…" : "Once. A few minutes on a fast connection."}</small>
+       ${s === "download" ? `<div class="meter" id="gem-meter"><i></i></div>` : ""}`;
+  const where = gem.kept ? "In this browser's private storage for this page, so the next visit skips the download. Remove it any time from here."
+    : "This browser has no room to keep it, so it is downloaded again on each visit.";
+  let body;
+  if (s === "nogpu") body = `<h2 id="gem-title">This browser can't run Gemma</h2>
+    <p>Writing messages here needs WebGPU, which Chrome, Edge and Safari 26 have on a computer. Phones and some browsers don't.
+      You can still see the message Gemma wrote for this guest earlier, on the owner's Mac. It is checked again here like any draft.</p>
+    <div class="act">${gem.for ? `<button class="btn" onclick="useRecorded()">Use the recorded message</button>` : ""}<button class="btn quiet" onclick="$('#gem').close()">Close</button></div>`;
+  else body = `<h2 id="gem-title">${s === "ready" ? "Gemma is ready on this computer" : "Write messages with Gemma, on this computer"}</h2>
+    <p>Messages are written by Google's Gemma 4 E2B, a small open model. This page downloads it and runs it on your computer's graphics chip. Nothing is installed.</p>
+    <dl class="facts">
+      <div><dt>What it is</dt><dd>A model file (the model's learned numbers and their layout), read by Google's LiteRT-LM library. Both run inside this tab's sandbox, which can't open your files or other tabs.</dd></div>
+      <div><dt>From</dt><dd>Model: <a href="${GEM.page}" target="_blank" rel="noopener">Hugging Face, litert-community</a>, Apache 2.0 licence, ${GEM.bytes.toLocaleString("en-US")} bytes.
+        Library: <a href="https://github.com/google-ai-edge/LiteRT-LM" target="_blank" rel="noopener">LiteRT-LM</a> 0.18.0 from jsDelivr.</dd></div>
+      <div><dt>Kept</dt><dd>${where}</dd></div>
+      <div><dt>Sent out</dt><dd>Only the finished message, to this desk, which checks every date and amount against the booking.</dd></div>
+    </dl>
+    ${s === "ask" ? "" : `<ol class="steps" aria-live="polite">
+      <li class="${gem.saved ? "done" : at("download")}">${gem.saved ? `<span class="dot">${svg('<path d="M20 6 9 17l-5-5"/>', 12)}</span>` : dot("download")}<span>${first}</span></li>
+      ${gem.kept && !gem.saved ? `<li class="${at("check")}">${dot("check")}<span><b>Check the file</b><small>${at("check") === "done" ? `${GEM.bytes.toLocaleString("en-US")} bytes, the published size.` : "Its size must match the published one exactly."}</small></span></li>` : ""}
+      <li class="${at("load")}">${dot("load")}<span><b>Load onto the graphics chip</b><small>${s === "ready" ? `Took ${gem.secs.toFixed(1)} s.` : "About 10 seconds."}</small></span></li>
+      <li class="${at("ready")}">${dot("ready")}<span><b>Ready</b><small>${s === "ready" ? "A message takes a few seconds." : "Then each message takes a few seconds."}</small></span></li>
+    </ol>`}
+    ${gem.error ? `<p class="err" role="alert">That didn't work: ${esc(gem.error)}. You can try again, or use the recorded message.</p>` : ""}
+    <div class="act">${
+      s === "ask" || s === "failed" ? `<button class="btn" onclick="startGem()">${gem.saved ? "Load Gemma" : `Download and load (${GB(GEM.bytes)})`}</button>
+        ${gem.for ? `<button class="btn quiet" onclick="useRecorded()">Use the recorded message</button>` : `<button class="btn quiet" onclick="$('#gem').close()">Not now</button>`}`
+      : s === "download" ? `<button class="btn quiet" onclick="gem.abort.abort()">Cancel</button>`
+      : s === "ready" ? `<button class="btn" onclick="$('#gem').close()">Done</button>${gem.stored ? `<button class="btn quiet" onclick="forgetGem()">Remove it from this computer</button>` : ""}`
+      : ""}</div>
+    ${s === "ask" && gem.for ? `<p class="fine">The recorded message was written by the same model on the owner's Mac, and is checked again here.</p>` : ""}`;
+  $("#gem").innerHTML = `<div class="dlg">${body}</div>`;
+  if (s === "download") paintMeter();
+}
+
+function renderGemChip() {
+  const slot = $("#gem-slot");
+  if (!slot) return;
+  slot.innerHTML = browserDrafts() ? `<button class="gem-chip ${gem.engine ? "on" : ""}" onclick="openGem()" aria-label="Gemma: ${gem.engine ? "ready" : "not loaded"}">
+    <i aria-hidden="true"></i><span>Gemma<em>${gem.engine ? ": ready" : ": not loaded"}</em></span></button>` : "";
+}
+
+function draftHere(id) {   // one model job at a time; the page stays usable meanwhile
+  if (!gem.engine) return openGem(id);
+  busy[id] = "draft"; delete errors[id]; render();
+  gemQueue = gemQueue.then(async () => {
+    try {
+      const b = await (await fetch(`/api/guests/${encodeURIComponent(id)}/brief`)).json();
+      const chat = await gem.engine.createConversation({preface: {messages: [{role: "system", content: b.system}]},
+        sessionConfig: {samplerParams: {type: 2, temperature: 0.7, p: 0.95, k: 64, seed: 1}}});   // Ollama's Gemma defaults
+      const t = performance.now(), reply = await chat.sendMessage(b.brief);
+      await chat.delete();
+      wrote[id] = (performance.now() - t) / 1000;
+      const text = reply.content.filter((c) => c.type === "text").map((c) => c.text).join("").trim();
+      delete busy[id];
+      await act(id, "draft", {text});
+    } catch (e) { delete busy[id]; errors[id] = "Gemma couldn't write this one. Try again, or use the recorded message."; render(); }
+  });
+}
+function useRecorded() { const id = gem.for; gem.for = null; $("#gem").close(); if (id) act(id, "draft", {by: "recorded"}); }
 
 // Replay: the stored test mornings. Scores were made before each morning; outcomes stay hidden until Reveal.
 let replays = {}, rp = {year: "2017", i: null, line: null, seen: {}, all: false};
@@ -628,7 +828,11 @@ function runAll() {
   setTimeout(() => { rp.all = true; $(".strip")?.classList.remove("intro"); }, 1800);
 }
 
+async function startOver() { await fetch("/api/reset", {method: "POST"}); try { sessionStorage.clear(); } catch {} location.reload(); }
+
 function render() {
+  renderGemChip();
+  $("#again").innerHTML = data.hosted ? `<button class="rest" style="margin:0" onclick="startOver()">Start this demo morning over</button>` : "";
   $("#day").innerHTML = esc(day(data.day, {weekday: "short", day: "numeric", month: "short", year: "numeric"})) + SEP + "demo day";
   if (!data.guests.length) {
     $("#lede").innerHTML = `<h1>Good morning.</h1><p>Check the guests arriving in the next ${data.days_ahead} days. It takes a few seconds.</p>`;

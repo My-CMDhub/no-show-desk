@@ -98,12 +98,32 @@ cp .env.example .env                   # add a TabPFN key; Telegram is optional
 Put `hotels.csv` from the [Hotel booking demand](https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand) dataset at `data/raw/hotels.csv`, then:
 
 ```bash
-.venv/bin/python -m pytest -q          # 51 tests
+.venv/bin/python -m pytest -q          # 55 tests
 .venv/bin/python -m noshow.app         # http://localhost:8000, plus the Telegram bot and the 08:00 summary
 ```
 
 <details>
-<summary><b>Run Gemma in the browser instead</b></summary>
+<summary><b>Write the messages in the browser instead (WebGPU)</b></summary>
+
+```bash
+DRAFTS=browser .venv/bin/python -m noshow.app
+```
+
+The first Draft opens a screen that says what will be downloaded and from where, then fetches Gemma 4 E2B's web build (2.0 GB, Apache 2.0) from Hugging Face with a live byte count, checks its exact size, keeps it in the browser's private storage (OPFS) and loads it onto the graphics chip with [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM). Later visits skip the download, and the same screen removes it. Browsers without WebGPU get the message recorded earlier on the owner's Mac, checked again like any draft.
+</details>
+
+<details>
+<summary><b>The hosted demo</b></summary>
+
+```bash
+HOSTED=1 .venv/bin/python -m noshow.app
+```
+
+Needs no dataset, no TabPFN key and no Ollama: the demo morning, both replay years and one recorded draft per flagged guest come from `results/demo_snapshot.json` (written by `scripts/snapshot.py`; a test checks it against the live numbers). Every visitor gets their own copy of the morning, and drafts are written in their browser. `render.yaml` deploys it on Render's free plan.
+</details>
+
+<details>
+<summary><b>The browser test run (100 drafts)</b></summary>
 
 Download `gemma-4-E2B-it-web.litertlm` (2.0 GB) from [litert-community/gemma-4-E2B-it-litert-lm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) into `data/models/`, unload Ollama's model, then:
 
@@ -132,7 +152,7 @@ The TabPFN scripts need the API key; the draft script needs Ollama.
 
 ```
 noshow/        the app: risk, reasons, facts, drafting, checker, graph, page, Telegram bot
-tests/         51 tests for the logic (facts, checker, the two pauses, edits, double sends)
+tests/         55 tests for the logic (facts, checker, the two pauses, edits, double sends)
 scripts/       the measurements behind every number
 results/       their output, including every stored draft
 spike/         Gemma 4 in the browser (LiteRT-LM on WebGPU)
@@ -142,6 +162,7 @@ docs/images/   screenshots
 ## Limits
 
 - **Demo data.** Real bookings from two Portuguese hotels (2015–17), not a motel, so the desk lives on a fixed day: 1 Feb 2017, the earliest of the 30 test mornings with the average number of flags. Guest names and contacts are made up, and prices are shown in dollars.
+- **The hosted demo replays saved scores.** It shows the demo morning exactly as TabPFN scored it on the owner's Mac; it doesn't score anything live.
 - **Scoring leaves the computer.** TabPFN runs through Prior Labs' API, so booking details (never names; the data has none) are sent for scoring under its free non-commercial licence. A paid version needs Prior Labs' commercial terms or TabPFN's open weights run locally. Gemma already runs locally.
 - **Reasons explain the group, not the order.** Guests who share a profile show the same reasons; the order within them is TabPFN weighing everything together.
 - **The morning link opens on the desk computer.** The page listens on `localhost`.

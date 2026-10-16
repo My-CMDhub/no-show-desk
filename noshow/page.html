@@ -643,7 +643,7 @@ function paintGem() {
     ${s === "ask" ? "" : `<ol class="steps" aria-live="polite">
       <li class="${gem.saved ? "done" : at("download")}">${gem.saved ? `<span class="dot">${svg('<path d="M20 6 9 17l-5-5"/>', 12)}</span>` : dot("download")}<span>${first}</span></li>
       ${gem.kept && !gem.saved ? `<li class="${at("check")}">${dot("check")}<span><b>Check the file</b><small>${at("check") === "done" ? `${GEM.bytes.toLocaleString("en-US")} bytes, the published size.` : "Its size must match the published one exactly."}</small></span></li>` : ""}
-      <li class="${at("load")}">${dot("load")}<span><b>Load onto the graphics chip</b><small>${s === "ready" ? `Took ${gem.secs.toFixed(1)} s.` : "About 10 seconds."}</small></span></li>
+      <li class="${at("load")}">${dot("load")}<span><b>Load onto the graphics chip</b><small>${s === "ready" ? (gem.streaming ? "Loaded as it downloaded." : `Took ${gem.secs.toFixed(1)} s.`) : "About 10 seconds."}</small></span></li>
       <li class="${at("ready")}">${dot("ready")}<span><b>Ready</b><small>${s === "ready" ? "A message takes a few seconds." : "Then each message takes a few seconds."}</small></span></li>
     </ol>`}
     ${gem.error ? `<p class="err" role="alert">That didn't work: ${esc(gem.error)}. You can try again, or use the recorded message.</p>` : ""}

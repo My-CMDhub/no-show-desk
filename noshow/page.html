@@ -11,6 +11,7 @@
     --panel: #F4F5F2; --row: #FFFFFF; --ink: #15191C; --muted: #5E676C; --rule: #DADEDB; --rule-strong: #C3C9C6;
     --lamp: #F2B705; --lamp-ink: #15191C; --lamp-soft: #FCF1CC; --ok: #1F7A5A; --warn: #9A3B12;
     --ink-btn: #15191C; --ink-btn-text: #FFFFFF; --focus: #15191C;
+    --board: #15191C; --board-cell: #262C30; --board-ink: #F4F5F2; --board-dim: #6F797D;
     --s1: 15px; --s2: 30px;
     --face: "Overpass", "Helvetica Neue", Arial, sans-serif;
     --ease: cubic-bezier(.2, .8, .2, 1);
@@ -21,12 +22,14 @@
       --panel: #121517; --row: #1A1E21; --ink: #ECEFEC; --muted: #9BA4A8; --rule: #2A3034; --rule-strong: #3A4247;
       --lamp-soft: #3A3115; --ok: #5CC197; --warn: #F0A27E;
       --ink-btn: #ECEFEC; --ink-btn-text: #121517; --focus: #ECEFEC; color-scheme: dark;
+      --board: #0A0C0D; --board-cell: #1E2427; --board-dim: #5F696D;
     }
   }
   :root[data-theme="dark"] {
     --panel: #121517; --row: #1A1E21; --ink: #ECEFEC; --muted: #9BA4A8; --rule: #2A3034; --rule-strong: #3A4247;
     --lamp-soft: #3A3115; --ok: #5CC197; --warn: #F0A27E;
     --ink-btn: #ECEFEC; --ink-btn-text: #121517; --focus: #ECEFEC; color-scheme: dark;
+    --board: #0A0C0D; --board-cell: #1E2427; --board-dim: #5F696D;
   }
 
   * { box-sizing: border-box; }
@@ -212,20 +215,39 @@
   .facts dt { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 600; padding-top: 2px; }
   .facts dd { margin: 0; }
   .facts a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--rule-strong); }
-  .steps { list-style: none; margin: 0 0 16px; padding: 0; }
-  .steps li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 7px 0; color: var(--muted); }
-  .steps .dot { width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--rule-strong); display: grid; place-items: center; }
-  .steps li.now { color: var(--ink); }
-  .steps li.now .dot { border-color: var(--ink); animation: breathe 1.4s ease-in-out infinite; }
-  .steps li.done { color: var(--ink); }
-  .steps li.done .dot { border-color: var(--ok); background: var(--ok); color: var(--row); }
-  .steps li.bad .dot { border-color: var(--warn); }
-  .steps b { font-weight: 600; }
-  .steps small { display: block; color: var(--muted); font-size: 13px; }
-  @keyframes breathe { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ink) 14%, transparent); } }
-  .meter { height: 6px; margin: 7px 0 3px; border-radius: 3px; background: var(--rule); overflow: hidden; }
-  .meter i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 3px; transition: width .25s linear; }
+  /* the facts fold away once the download starts; one quiet link brings them back */
+  .fold2 { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .45s var(--ease), opacity .3s var(--ease); }
+  .fold2 > div { overflow: hidden; min-height: 0; }
+  .dlg.run .fold2 { grid-template-rows: 0fr; opacity: 0; }
+  .dlg.run.peek .fold2 { grid-template-rows: 1fr; opacity: 1; }
+  .peek { display: none; padding: 0; border: 0; background: none; color: var(--muted); font-size: 14px;
+          text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 4px; }
+  .dlg.run .peek { display: inline-block; animation: show .4s .2s var(--ease) backwards; }
+  @keyframes show { from { opacity: 0; transform: translateY(4px); } }
+  /* the arrivals board: words flip when the step changes, numbers roll */
+  .board { margin-top: 14px; padding: 12px; border-radius: 10px; background: var(--board); color: var(--board-ink); }
+  .flaps { display: flex; gap: 3px; }
+  .flaps + .flaps { margin-top: 3px; }
+  .cell { position: relative; flex: 0 0 auto; width: 1.36em; height: 1.8em; overflow: hidden; border-radius: 3px; background: var(--board-cell);
+          font-size: 15px; font-weight: 700; line-height: 1.8em; text-align: center; }
+  .cell::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--board); opacity: .7; }
+  .cell b { display: block; font-weight: inherit; }
+  .cell.f b { animation: flap .28s var(--ease) backwards; animation-delay: var(--d, 0ms); }
+  @keyframes flap { from { transform: perspective(90px) rotateX(-80deg); opacity: .15; } }
+  .cell.n b { transition: transform .35s var(--ease); }
+  .cell.n b span { display: block; height: 1.8em; }
+  .cell.n.lead { color: var(--board-dim); }
+  .rail { position: relative; height: 3px; margin-top: 12px; border-radius: 2px; background: var(--board-cell); overflow: hidden; }
+  .rail i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 2px; background: var(--board-ink); transition: width .25s linear; }
+  .rail.wait i { width: 28%; transition: none; animation: slide 1.1s ease-in-out infinite alternate; }
+  @keyframes slide { from { left: 0; } to { left: 72%; } }
+  .cap { min-height: 1.5em; margin: 10px 0 0 !important; color: var(--muted); font-size: 14px; }
+  .ticks { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 13px; }
+  .ticks li { display: inline-flex; gap: 5px; align-items: center; }
+  .ticks li.new { animation: show .4s var(--ease) backwards; }
+  .ticks svg { color: var(--ok); }
   .dlg .act { justify-content: flex-start; }
+  .dlg > p.err { color: var(--warn); margin: 10px 0 0; }
   .dlg .fine { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
   .by { margin: -4px 0 12px !important; color: var(--muted); font-size: 13px; }
   @media (max-width: 480px) { .facts div { grid-template-columns: 1fr; gap: 2px; } .gem-chip em { display: none; } }
@@ -254,8 +276,8 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .fold, .chev, .btn, .strip i { transition: none; }
-    .reveal .flip, dialog[open], .steps li.now .dot { animation: none; }
-    .meter i { transition: none; }
+    .reveal .flip, dialog[open], .cell.f b, .ticks li.new, .dlg.run .peek, .rail.wait i { animation: none; }
+    .cell.n b, .rail i, .fold2 { transition: none; }
     .bar i { animation: none; width: 60%; }
   }
 </style>
@@ -461,7 +483,7 @@ function action(g) {
     const send = yes ? `<button class="btn" ${off} onclick="act('${g.id}','send',{anyway:true})">${ICON.send} Send anyway</button>`
       : `<button class="btn" ${off} onclick="act('${g.id}','send')">${ICON.send} Send by ${how}</button>`;
     const by = g.by === "browser" ? `Written by Gemma in this browser${wrote[g.id] ? ` in ${wrote[g.id].toFixed(1)} s` : ""}.`
-      : g.by === "recorded" ? "Written earlier by Gemma on the owner's Mac, and checked again here." : "";
+      : g.by === "recorded" ? "Written earlier by the same Gemma, and checked again here." : "";
     return `<h3><label for="t-${g.id}">Message to ${esc(b.guest.split(" ")[0])}</label></h3>
       <textarea id="t-${g.id}" oninput="edited('${g.id}', this)">${esc(edits[g.id] ?? g.draft)}</textarea>${v}${by ? `<p class="by">${by}</p>` : ""}
       <div class="act">${send}<button class="btn quiet" ${off} onclick="soon('${g.id}','reject')">Reject draft</button></div>`;
@@ -552,7 +574,7 @@ async function savedModel() {   // the copy kept by an earlier visit, if it's wh
   } catch { return null; }
 }
 async function bootGem() {   // a copy kept by an earlier visit loads by itself: the visitor already said yes to it once
-  if (!browserDrafts() || !navigator.gpu || gem.engine || gem.step !== "ask") return;
+  if (!browserDrafts() || !navigator.gpu || gem.engine || gem.step !== "ask" || lastFail()) return;
   gem.saved = await savedModel();
   if (gem.saved) { gem.kept = true; startGem(); }
 }
@@ -560,11 +582,21 @@ async function roomToKeep() {
   try { const {quota, usage} = await navigator.storage.estimate(); return quota - usage > GEM.bytes * 1.05; } catch { return false; }
 }
 
+async function canRun() {   // what can be known before a 2 GB download: a WebGPU adapter, and how the last try went
+  if (!navigator.gpu) return "This browser has no WebGPU";
+  try { if (!(await navigator.gpu.requestAdapter())) return "This browser has WebGPU but no graphics adapter for it"; }
+  catch { return "This browser's WebGPU didn't answer"; }
+  return "";
+}
+const lastFail = () => { try { return localStorage.getItem("gem-failed") || ""; } catch { return ""; } };
+const markFail = (why) => { try { why ? localStorage.setItem("gem-failed", why) : localStorage.removeItem("gem-failed"); } catch {} };
+
 async function openGem(forId = null) {
   gem.for = forId ?? gem.for;
-  if (gem.step === "ask" || gem.step === "failed") {
-    gem.step = !navigator.gpu ? "nogpu" : "ask";
-    gem.saved = navigator.gpu ? await savedModel() : null;
+  if (gem.step === "ask" || gem.step === "failed" || gem.step === "nogpu") {
+    gem.cant = await canRun();
+    gem.step = gem.cant ? "nogpu" : gem.step === "failed" ? "failed" : "ask";
+    gem.saved = gem.cant ? null : await savedModel();
     gem.kept = gem.saved ? true : await roomToKeep();
   }
   paintGem();
@@ -574,6 +606,7 @@ async function openGem(forId = null) {
 async function startGem() {
   const ctl = new AbortController();
   gem.abort = ctl; gem.error = ""; gem.got = 0; gem.streaming = false;
+  let fetched = false;
   try {
     let model = gem.saved;
     if (!model) {
@@ -590,81 +623,136 @@ async function startGem() {
         model = await handle.getFile();
         gem.step = "check"; paintGem();
         if (model.size !== GEM.bytes) throw new Error(`got ${model.size.toLocaleString("en-US")} bytes, expected ${GEM.bytes.toLocaleString("en-US")}`);
+        await new Promise((r) => setTimeout(r, 700));   // long enough to read that the size matched
       } else { model = body; gem.streaming = true; }   // no room to keep it: the engine reads the download as it arrives
     }
+    fetched = true;
     if (!gem.streaming) { gem.step = "load"; gem.t0 = performance.now(); paintGem(); }
     const {Engine} = await import(GEM.lib);
     gem.engine = await Engine.create({model});
     // Streaming: the size was checked from the server's header above; the engine can finish before reading the last bytes.
     gem.secs = (performance.now() - gem.t0) / 1000; gem.step = "ready"; gem.stored = !!(gem.saved || gem.kept);
+    markFail("");
     if (gem.kept) navigator.storage.persist?.().catch(() => {});   // ask the browser not to clear it when space runs low
-    paintGem(); renderGemChip();
+    paintGem();
     const id = gem.for; gem.for = null;
-    if (id) { setTimeout(() => $("#gem").close(), 900); draftHere(id); }
+    if (id) { setTimeout(() => $("#gem").close(), 1400); draftHere(id); }
   } catch (e) {
     gem.step = ctl.signal.aborted ? "ask" : "failed";
     gem.error = ctl.signal.aborted ? "" : String(e?.message || e);
+    if (!ctl.signal.aborted && (fetched || gem.streaming)) markFail(gem.error);   // the file arrived but this device couldn't run it
     paintGem();
+    if (!$("#gem").open && gem.step === "failed") $("#gem").showModal();   // a quiet load from an earlier visit failed: say so
   }
 }
 let ticking = false;
 function tick() { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; paintMeter(); }); } }
-function paintMeter() {
+function paintMeter() {   // in place, many times a second: digits roll, the rail grows, the caption counts
   if (gem.streaming && gem.step === "download" && gem.got >= GEM.bytes * 0.999) {   // the engine has the model; now loading
     gem.step = "load"; gem.t0 = performance.now(); return paintGem();
   }
-  const el = $("#gem-meter");
-  if (!el) return;
+  if (gem.step !== "download" || !$("#gem-num")) return;
   const secs = (performance.now() - gem.t0) / 1000, rate = gem.got / Math.max(secs, 0.1), left = (GEM.bytes - gem.got) / Math.max(rate, 1);
-  el.querySelector("i").style.width = (100 * gem.got / GEM.bytes).toFixed(1) + "%";
-  $("#gem-bytes").textContent = `${MB(gem.got)} of ${GB(GEM.bytes)}` + (secs > 2 ? `, ${MB(rate)}/s, about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.ceil(left) + " s"} left` : "");
+  roll($("#gem-num"), Math.round(gem.got / 1e6));
+  $("#gem-rail").style.width = (100 * gem.got / GEM.bytes).toFixed(1) + "%";
+  $("#gem-cap").textContent = `${MB(gem.got)} of ${GB(GEM.bytes)}` + (secs > 2 ? ` · ${MB(rate)}/s · about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.ceil(left) + " s"} left` : "");
+}
+let loadTimer = 0;
+function loadClock() {   // the load can't report progress, so the board shows honest elapsed seconds instead
+  clearInterval(loadTimer);
+  loadTimer = setInterval(() => {
+    if (gem.step !== "load" || !$("#gem-num")) return clearInterval(loadTimer);
+    const s = (performance.now() - gem.t0) / 1000;
+    roll($("#gem-num"), Math.floor(s));
+    $("#gem-cap").textContent = `${gem.saved ? "Found on this device. " : ""}Moving it onto your graphics chip · ${s.toFixed(1)} s, usually about 10`;
+  }, 100);
 }
 async function forgetGem() {
   try { await gem.engine?.delete(); } catch {}   // frees the ~2 GB it holds on the graphics chip
   try { await (await navigator.storage.getDirectory()).removeEntry(GEM.file); } catch {}
-  gem = {...gem, step: "ask", saved: null, stored: false, engine: null};
-  await openGem(); renderGemChip();
+  markFail("");
+  gem = {...gem, step: "ask", saved: null, stored: false, engine: null, error: "", painted: null};
+  await openGem();
 }
 
-function paintGem() {
+// The board: 11 cells a row. Letters flip only when the word changes; numbers roll, so nothing restarts per frame.
+const W = 11;
+const flapCells = (text, from = 0) => [...text].map((c, i) =>
+  `<span class="cell f" style="--d:${(from + i) * 26}ms"><b>${c === " " ? "&nbsp;" : esc(c)}</b></span>`).join("");
+const numCells = (n) => `<span id="gem-num" style="display:contents">${Array.from({length: n}, () =>
+  `<span class="cell n"><b>${[...Array(10).keys()].map((d) => `<span>${d}</span>`).join("")}</b></span>`).join("")}</span>`;
+function roll(el, value) {
+  const cells = el.querySelectorAll(".cell"), digits = String(Math.min(value, 10 ** cells.length - 1)).padStart(cells.length, "0");
+  cells.forEach((c, i) => {
+    c.querySelector("b").style.transform = `translateY(-${digits[i] * 1.8}em)`;
+    c.classList.toggle("lead", i < cells.length - 1 && /^0+$/.test(digits.slice(0, i + 1)));   // leading zeros dim
+  });
+}
+function board(s) {
+  const pad = (used) => flapCells(" ".repeat(Math.max(0, W - used)), used);
+  const top = {download: "DOWNLOADING", check: "CHECKING", load: "LOADING", ready: "READY", failed: "STOPPED"}[s];
+  const second = s === "download" ? numCells(4) + flapCells(" MB", 4) + pad(7)
+    : s === "check" ? flapCells("SIZE OK") + pad(7)
+    : s === "load" ? numCells(2) + flapCells(" S", 2) + pad(4)
+    : pad(0);
+  const done = [!gem.saved && ["download", "check", "load", "ready"].indexOf(s) > 0 && "Downloaded 2.0 GB",
+                gem.kept && !gem.saved && ["load", "ready"].includes(s) && "Size matches",
+                gem.saved && "Found on this device",
+                s === "ready" && "On the graphics chip"].filter(Boolean);
+  const cap = s === "check" ? `${GEM.bytes.toLocaleString("en-US")} bytes, exactly the published size.`
+    : s === "ready" ? (gem.streaming ? "Each message takes a few seconds. This browser had no room to keep it, so the next visit downloads it again." : "Each message takes a few seconds.")
+    : s === "failed" ? "" : "Starting…";
+  return `<div class="board" role="img" aria-label="${top.toLowerCase()}">
+      <div class="flaps">${flapCells(top) + pad(top.length)}</div><div class="flaps">${second}</div>
+      <div class="rail ${s === "load" ? "wait" : ""}"><i id="gem-rail" style="width:${s === "check" || s === "ready" ? 100 : 0}%"></i></div></div>
+    <p class="cap" id="gem-cap">${cap}</p>
+    ${done.length ? `<ul class="ticks">${done.map((t, i) => `<li class="${i === done.length - 1 ? "new" : ""}">${svg('<path d="M20 6 9 17l-5-5"/>', 13)}${t}</li>`).join("")}</ul>` : ""}`;
+}
+
+function paintGem() {   // the frame stays; only the parts that change are redrawn, so the facts can fold smoothly
   renderGemChip();
-  const s = gem.step, order = ["download", "check", "load", "ready"];
-  const at = (k) => s === "failed" ? "" : order.indexOf(s) > order.indexOf(k) || s === "ready" ? "done" : s === k ? "now" : "";
-  const dot = (k) => `<span class="dot">${at(k) === "done" ? svg('<path d="M20 6 9 17l-5-5"/>', 12) : ""}</span>`;
-  const first = gem.saved ? `<b>Found on this computer</b><small>Kept from an earlier visit: ${GB(GEM.bytes)}, no download.</small>`
-    : `<b>Download ${GB(GEM.bytes)}</b><small id="gem-bytes">${s === "download" ? "Starting…" : "Once. A few minutes on a fast connection."}</small>
-       ${s === "download" ? `<div class="meter" id="gem-meter"><i></i></div>` : ""}`;
-  const where = gem.kept ? `In this browser's private storage for this page, so the next visit loads it by itself, with no download. Remove it any time from here.${gem.partial ? ` An unfinished copy from an earlier visit (${gem.partial >= 1e9 ? GB(gem.partial) : MB(gem.partial)}) will be replaced.` : ""}`
+  if (!$("#gem-dlg")) $("#gem").innerHTML = `<div class="dlg" id="gem-dlg"><h2 id="gem-title"></h2><p id="gem-lede"></p>
+    <div class="fold2"><div><dl class="facts" id="gem-facts"></dl></div></div>
+    <button class="peek" onclick="$('#gem-dlg').classList.toggle('peek')">What's being downloaded</button>
+    <div id="gem-stage" aria-live="polite"></div><p class="err" id="gem-err" role="alert" hidden></p>
+    <div class="act" id="gem-act"></div><p class="fine" id="gem-fine" hidden></p></div>`;
+  const s = gem.step, running = ["download", "check", "load", "ready"].includes(s);
+  const stuck = s === "nogpu" || s === "failed" || (s === "ask" && lastFail());   // the recorded message becomes the main button
+  const rec = gem.for ? `<button class="btn ${stuck ? "" : "quiet"}" onclick="useRecorded()">Use the recorded message</button>` : "";
+  $("#gem-dlg").classList.toggle("run", running || s === "failed");
+  if (!running) $("#gem-dlg").classList.remove("peek");
+  $("#gem-title").textContent = s === "nogpu" ? "This browser can't run Gemma" : s === "failed" ? "Gemma couldn't start here"
+    : s === "ready" ? "Gemma is ready" : running ? "Getting Gemma ready" : "Write messages with Gemma, on this device";
+  $("#gem-lede").textContent = s === "nogpu"
+    ? `${gem.cant}. Writing here needs WebGPU: Chrome or Edge on a computer, or Safari 26 on a Mac, iPhone or iPad. You can still use the message written earlier by the same Gemma, checked again here like any draft.`
+    : "Google's Gemma 4 E2B, a small open model, writes the messages on this device's graphics chip. Nothing is installed.";
+  const where = gem.kept ? `In this browser's private storage for this page, so the next visit loads it by itself. Remove it any time from here.${gem.partial ? ` An unfinished copy from an earlier visit (${gem.partial >= 1e9 ? GB(gem.partial) : MB(gem.partial)}) will be replaced.` : ""}`
     : "This browser has no room to keep it, so it is downloaded again on each visit.";
-  let body;
-  if (s === "nogpu") body = `<h2 id="gem-title">This browser can't run Gemma</h2>
-    <p>Writing messages here needs WebGPU, which Chrome, Edge and Safari 26 have on a computer. Phones and some browsers don't.
-      You can still see the message Gemma wrote for this guest earlier, on the owner's Mac. It is checked again here like any draft.</p>
-    <div class="act">${gem.for ? `<button class="btn" onclick="useRecorded()">Use the recorded message</button>` : ""}<button class="btn quiet" onclick="closeGem()">Close</button></div>`;
-  else body = `<h2 id="gem-title">${s === "ready" ? "Gemma is ready on this computer" : "Write messages with Gemma, on this computer"}</h2>
-    <p>Messages are written by Google's Gemma 4 E2B, a small open model. This page downloads it and runs it on your computer's graphics chip. Nothing is installed.</p>
-    <dl class="facts">
-      <div><dt>What it is</dt><dd>A model file (the model's learned numbers and their layout), read by Google's LiteRT-LM library. Both run inside this tab's sandbox, which can't open your files or other tabs.</dd></div>
-      <div><dt>From</dt><dd>Model: <a href="${GEM.page}" target="_blank" rel="noopener">Hugging Face, litert-community</a>, Apache 2.0 licence, ${GEM.bytes.toLocaleString("en-US")} bytes.
-        Library: <a href="https://github.com/google-ai-edge/LiteRT-LM" target="_blank" rel="noopener">LiteRT-LM</a> 0.18.0 from jsDelivr.</dd></div>
-      <div><dt>Kept</dt><dd>${where}</dd></div>
-      <div><dt>Sent out</dt><dd>Only the finished message, to this desk, which checks every date and amount against the booking.</dd></div>
-    </dl>
-    ${s === "ask" ? "" : `<ol class="steps" aria-live="polite">
-      <li class="${gem.saved ? "done" : at("download")}">${gem.saved ? `<span class="dot">${svg('<path d="M20 6 9 17l-5-5"/>', 12)}</span>` : dot("download")}<span>${first}</span></li>
-      ${gem.kept && !gem.saved ? `<li class="${at("check")}">${dot("check")}<span><b>Check the file</b><small>${at("check") === "done" ? `${GEM.bytes.toLocaleString("en-US")} bytes, the published size.` : "Its size must match the published one exactly."}</small></span></li>` : ""}
-      <li class="${at("load")}">${dot("load")}<span><b>Load onto the graphics chip</b><small>${s === "ready" ? (gem.streaming ? "Loaded as it downloaded." : `Took ${gem.secs.toFixed(1)} s.`) : "About 10 seconds."}</small></span></li>
-      <li class="${at("ready")}">${dot("ready")}<span><b>Ready</b><small>${s === "ready" ? "A message takes a few seconds." : "Then each message takes a few seconds."}</small></span></li>
-    </ol>`}
-    ${gem.error ? `<p class="err" role="alert">That didn't work: ${esc(gem.error)}. You can try again, or use the recorded message.</p>` : ""}
-    <div class="act">${
-      s === "ask" || s === "failed" ? `<button class="btn" onclick="startGem()">${gem.saved ? "Load Gemma" : `Download and load (${GB(GEM.bytes)})`}</button>
-        ${gem.for ? `<button class="btn quiet" onclick="useRecorded()">Use the recorded message</button>` : `<button class="btn quiet" onclick="closeGem()">Not now</button>`}`
-      : s === "download" ? `<button class="btn quiet" onclick="gem.abort.abort()">Cancel</button>`
-      : s === "ready" ? `<button class="btn" onclick="closeGem()">Done</button>${gem.stored ? `<button class="btn quiet" onclick="forgetGem()">Remove it from this computer</button>` : ""}`
-      : ""}</div>
-    ${s === "ask" && gem.for ? `<p class="fine">The recorded message was written by the same model on the my Mac, and is checked again here.</p>` : ""}`;
-  $("#gem").innerHTML = `<div class="dlg">${body}</div>`;
+  $("#gem-facts").hidden = s === "nogpu";
+  $("#gem-facts").innerHTML = s === "nogpu" ? "" : `
+    <div><dt>What it is</dt><dd>A model file (the model's learned numbers and their layout), read by Google's LiteRT-LM library. Both run inside this tab's sandbox, which can't open your files or other tabs.</dd></div>
+    <div><dt>From</dt><dd>Model: <a href="${GEM.page}" target="_blank" rel="noopener">Hugging Face, litert-community</a>, Apache 2.0 licence, ${GEM.bytes.toLocaleString("en-US")} bytes.
+      Library: <a href="https://github.com/google-ai-edge/LiteRT-LM" target="_blank" rel="noopener">LiteRT-LM</a> 0.18.0 from jsDelivr.</dd></div>
+    <div><dt>Kept</dt><dd>${where}</dd></div>
+    <div><dt>Sent out</dt><dd>Only the finished message, to this desk, which checks every date and amount against the booking.</dd></div>`;
+  if (gem.painted !== s) {   // a new step: the board flips to it
+    $("#gem-stage").innerHTML = running || s === "failed" ? board(s) : "";
+    gem.painted = s;
+    if (s === "load") loadClock();
+  }
+  const err = s === "ask" && lastFail() ? `Last time, this device downloaded Gemma but couldn't run it (${lastFail()}).`
+    : !gem.error ? "" : s === "failed" && lastFail() ? `This device downloaded Gemma but couldn't run it: ${gem.error}.` : `That didn't work: ${gem.error}.`;
+  $("#gem-err").hidden = !err;
+  $("#gem-err").textContent = err;
+  $("#gem-act").innerHTML =
+      s === "nogpu" ? `${rec}<button class="btn quiet" onclick="closeGem()">Close</button>`
+    : s === "ask" ? (stuck && rec ? rec : "") + `<button class="btn ${stuck && rec ? "quiet" : ""}" onclick="startGem()">${gem.saved ? "Load Gemma" : `Download and load (${GB(GEM.bytes)})`}</button>${stuck && rec ? "" : rec || `<button class="btn quiet" onclick="closeGem()">Not now</button>`}`
+    : s === "failed" ? `${rec}<button class="btn ${rec ? "quiet" : ""}" onclick="startGem()">Try again</button>${rec ? "" : `<button class="btn quiet" onclick="closeGem()">Close</button>`}`
+    : s === "download" ? `<button class="btn quiet" onclick="gem.abort.abort()">Cancel</button>`
+    : s === "ready" ? `<button class="btn" onclick="closeGem()">Done</button>${gem.stored ? `<button class="btn quiet" onclick="forgetGem()">Remove it from this device</button>` : ""}`
+    : "";
+  $("#gem-fine").hidden = !(s === "ask" && gem.for);
+  $("#gem-fine").textContent = "The recorded message was written earlier by the same Gemma and is checked again here.";
   if (s === "download") paintMeter();
 }
 

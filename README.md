@@ -12,6 +12,8 @@ says why in plain words, and drafts a short "are you still coming?" message for 
 ![Risk: TabPFN](https://img.shields.io/badge/risk-TabPFN-F2B705)
 ![Drafts: Gemma 4 E2B, local](https://img.shields.io/badge/drafts-Gemma%204%20E2B%2C%20local-F2B705)
 
+**[Try the live demo](https://no-show-desk.onrender.com)** · your own copy of the demo morning · Gemma writes in your browser on a computer
+
 <img src="docs/images/desk-desktop.jpg" alt="The owner page: seven guests might not show, with Chloe's drafted message open and checked" width="760">
 
 </div>
@@ -162,6 +164,7 @@ docs/images/   screenshots
 ## Limits
 
 - **Demo data.** Real bookings from two Portuguese hotels (2015–17), not a motel, so the desk lives on a fixed day: 1 Feb 2017, the earliest of the 30 test mornings with the average number of flags. Guest names and contacts are made up, and prices are shown in dollars.
+- **Gemma in the browser is for computers.** Phones and tablets get the message recorded earlier: an iPhone 15 Pro downloaded the 2 GB model, then Safari reloaded the page while loading it. Loading is heavy on computers too; on the 8 GB test Mac the browser stopped responding for a while after loading.
 - **The hosted demo replays saved scores.** It shows the demo morning exactly as TabPFN scored it on the owner's Mac; it doesn't score anything live.
 - **Scoring leaves the computer.** TabPFN runs through Prior Labs' API, so booking details (never names; the data has none) are sent for scoring under its free non-commercial licence. A paid version needs Prior Labs' commercial terms or TabPFN's open weights run locally. Gemma already runs locally.
 - **Reasons explain the group, not the order.** Guests who share a profile show the same reasons; the order within them is TabPFN weighing everything together.

@@ -26,7 +26,8 @@ GEMMA = threading.Lock()   # one Gemma job at a time on an 8 GB Mac
 async def lifespan(api: FastAPI):
     load_dotenv(desk.ROOT / ".env")
     api.state.desk = desk.app()
-    stop = await bot.start(api.state.desk) if os.getenv("TELEGRAM_BOT_TOKEN") else None
+    # The hosted demo never starts the owner's Telegram bot, even when run on the owner's Mac with .env present.
+    stop = await bot.start(api.state.desk) if os.getenv("TELEGRAM_BOT_TOKEN") and not desk.HOSTED else None
     yield
     if stop:
         await stop()

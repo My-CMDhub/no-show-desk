@@ -219,7 +219,7 @@
   .fold2 { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .45s var(--ease), opacity .3s var(--ease); }
   .fold2 > div { overflow: hidden; min-height: 0; }
   .dlg.run .fold2 { grid-template-rows: 0fr; opacity: 0; }
-  .dlg.run.peek .fold2 { grid-template-rows: 1fr; opacity: 1; }
+  .dlg.run.facts-open .fold2 { grid-template-rows: 1fr; opacity: 1; }
   .peek { display: none; padding: 0; border: 0; background: none; color: var(--muted); font-size: 14px;
           text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 4px; }
   .dlg.run .peek { display: inline-block; animation: show .4s .2s var(--ease) backwards; }
@@ -574,7 +574,7 @@ async function savedModel() {   // the copy kept by an earlier visit, if it's wh
   } catch { return null; }
 }
 async function bootGem() {   // a copy kept by an earlier visit loads by itself: the visitor already said yes to it once
-  if (!browserDrafts() || !navigator.gpu || gem.engine || gem.step !== "ask" || lastFail()) return;
+  if (!browserDrafts() || PHONE || !navigator.gpu || gem.engine || gem.step !== "ask" || lastFail()) return;
   gem.saved = await savedModel();
   if (gem.saved) { gem.kept = true; startGem(); }
 }
@@ -582,7 +582,21 @@ async function roomToKeep() {
   try { const {quota, usage} = await navigator.storage.estimate(); return quota - usage > GEM.bytes * 1.05; } catch { return false; }
 }
 
-async function canRun() {   // what can be known before a 2 GB download: a WebGPU adapter, and how the last try went
+// Phones and tablets: a 2 GB model needs more memory than their browsers give one page (an iPhone 15 Pro downloaded
+// it, then Safari closed the tab while loading it). They get the recorded message instead, with no download offered.
+const PHONE = !!navigator.userAgentData?.mobile || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);   // iPads say "Macintosh"
+// A load that never finished: the browser killed the tab (out of memory) before any error could be caught.
+try {
+  if (localStorage.getItem("gem-loading")) {
+    localStorage.setItem("gem-failed", "the page closed while loading it, most likely out of memory");
+    localStorage.removeItem("gem-loading");
+  }
+} catch {}
+const loading = (on) => { try { on ? localStorage.setItem("gem-loading", Date.now()) : localStorage.removeItem("gem-loading"); } catch {} };
+
+async function canRun() {   // what can be known before a 2 GB download: the device, a WebGPU adapter, the last try
+  if (PHONE) return "Phones and tablets don't give one web page enough memory for Gemma";
   if (!navigator.gpu) return "This browser has no WebGPU";
   try { if (!(await navigator.gpu.requestAdapter())) return "This browser has WebGPU but no graphics adapter for it"; }
   catch { return "This browser's WebGPU didn't answer"; }
@@ -596,7 +610,9 @@ async function openGem(forId = null) {
   if (gem.step === "ask" || gem.step === "failed" || gem.step === "nogpu") {
     gem.cant = await canRun();
     gem.step = gem.cant ? "nogpu" : gem.step === "failed" ? "failed" : "ask";
-    gem.saved = gem.cant ? null : await savedModel();
+    gem.saved = await savedModel();
+    gem.leftover = gem.cant ? (gem.saved ? GEM.bytes : gem.partial) : 0;   // a copy this device can't use: offer to free it
+    if (gem.cant) gem.saved = null;
     gem.kept = gem.saved ? true : await roomToKeep();
   }
   paintGem();
@@ -629,7 +645,9 @@ async function startGem() {
     fetched = true;
     if (!gem.streaming) { gem.step = "load"; gem.t0 = performance.now(); paintGem(); }
     const {Engine} = await import(GEM.lib);
+    loading(true);   // cleared below; still set on the next visit means the tab died while loading
     gem.engine = await Engine.create({model});
+    loading(false);
     // Streaming: the size was checked from the server's header above; the engine can finish before reading the last bytes.
     gem.secs = (performance.now() - gem.t0) / 1000; gem.step = "ready"; gem.stored = !!(gem.saved || gem.kept);
     markFail("");
@@ -638,6 +656,7 @@ async function startGem() {
     const id = gem.for; gem.for = null;
     if (id) { setTimeout(() => $("#gem").close(), 1400); draftHere(id); }
   } catch (e) {
+    loading(false);
     gem.step = ctl.signal.aborted ? "ask" : "failed";
     gem.error = ctl.signal.aborted ? "" : String(e?.message || e);
     if (!ctl.signal.aborted && (fetched || gem.streaming)) markFail(gem.error);   // the file arrived but this device couldn't run it
@@ -709,22 +728,28 @@ function board(s) {
     ${done.length ? `<ul class="ticks">${done.map((t, i) => `<li class="${i === done.length - 1 ? "new" : ""}">${svg('<path d="M20 6 9 17l-5-5"/>', 13)}${t}</li>`).join("")}</ul>` : ""}`;
 }
 
+function toggleFacts(btn) {
+  const open = $("#gem-dlg").classList.toggle("facts-open");
+  btn.setAttribute("aria-expanded", open);
+  btn.textContent = open ? "Hide the details" : "What's being downloaded";
+}
+
 function paintGem() {   // the frame stays; only the parts that change are redrawn, so the facts can fold smoothly
   renderGemChip();
   if (!$("#gem-dlg")) $("#gem").innerHTML = `<div class="dlg" id="gem-dlg"><h2 id="gem-title"></h2><p id="gem-lede"></p>
     <div class="fold2"><div><dl class="facts" id="gem-facts"></dl></div></div>
-    <button class="peek" onclick="$('#gem-dlg').classList.toggle('peek')">What's being downloaded</button>
+    <button class="peek" aria-expanded="false" onclick="toggleFacts(this)">What's being downloaded</button>
     <div id="gem-stage" aria-live="polite"></div><p class="err" id="gem-err" role="alert" hidden></p>
     <div class="act" id="gem-act"></div><p class="fine" id="gem-fine" hidden></p></div>`;
   const s = gem.step, running = ["download", "check", "load", "ready"].includes(s);
   const stuck = s === "nogpu" || s === "failed" || (s === "ask" && lastFail());   // the recorded message becomes the main button
   const rec = gem.for ? `<button class="btn ${stuck ? "" : "quiet"}" onclick="useRecorded()">Use the recorded message</button>` : "";
   $("#gem-dlg").classList.toggle("run", running || s === "failed");
-  if (!running) $("#gem-dlg").classList.remove("peek");
-  $("#gem-title").textContent = s === "nogpu" ? "This browser can't run Gemma" : s === "failed" ? "Gemma couldn't start here"
+  if (!running && $("#gem-dlg").classList.contains("facts-open")) toggleFacts($("#gem-dlg .peek"));
+  $("#gem-title").textContent = s === "nogpu" ? (PHONE ? "Gemma writes on computers, not phones" : "This browser can't run Gemma") : s === "failed" ? "Gemma couldn't start here"
     : s === "ready" ? "Gemma is ready" : running ? "Getting Gemma ready" : "Write messages with Gemma, on this device";
   $("#gem-lede").textContent = s === "nogpu"
-    ? `${gem.cant}. Writing here needs WebGPU: Chrome or Edge on a computer, or Safari 26 on a Mac, iPhone or iPad. You can still use the message written earlier by the same Gemma, checked again here like any draft.`
+    ? `${gem.cant}. On a computer with Chrome, Edge or Safari 26, Gemma writes each message right on the page in a few seconds. Here, Draft uses the message written earlier by the same Gemma, checked again like any draft.`
     : "Google's Gemma 4 E2B, a small open model, writes the messages on this device's graphics chip. Nothing is installed.";
   const where = gem.kept ? `In this browser's private storage for this page, so the next visit loads it by itself. Remove it any time from here.${gem.partial ? ` An unfinished copy from an earlier visit (${gem.partial >= 1e9 ? GB(gem.partial) : MB(gem.partial)}) will be replaced.` : ""}`
     : "This browser has no room to keep it, so it is downloaded again on each visit.";
@@ -745,7 +770,7 @@ function paintGem() {   // the frame stays; only the parts that change are redra
   $("#gem-err").hidden = !err;
   $("#gem-err").textContent = err;
   $("#gem-act").innerHTML =
-      s === "nogpu" ? `${rec}<button class="btn quiet" onclick="closeGem()">Close</button>`
+      s === "nogpu" ? `${rec}<button class="btn ${rec ? "quiet" : ""}" onclick="closeGem()">Close</button>${gem.leftover ? `<button class="btn quiet" onclick="forgetGem()">Free the ${GB(gem.leftover)} downloaded earlier</button>` : ""}`
     : s === "ask" ? (stuck && rec ? rec : "") + `<button class="btn ${stuck && rec ? "quiet" : ""}" onclick="startGem()">${gem.saved ? "Load Gemma" : `Download and load (${GB(GEM.bytes)})`}</button>${stuck && rec ? "" : rec || `<button class="btn quiet" onclick="closeGem()">Not now</button>`}`
     : s === "failed" ? `${rec}<button class="btn ${rec ? "quiet" : ""}" onclick="startGem()">Try again</button>${rec ? "" : `<button class="btn quiet" onclick="closeGem()">Close</button>`}`
     : s === "download" ? `<button class="btn quiet" onclick="gem.abort.abort()">Cancel</button>`
@@ -759,12 +784,13 @@ function paintGem() {   // the frame stays; only the parts that change are redra
 function renderGemChip() {
   const slot = $("#gem-slot");
   if (!slot) return;
-  const word = gem.engine ? "ready" : gem.step === "load" ? "loading" : gem.step === "download" || gem.step === "check" ? "downloading" : "not loaded";
+  const word = PHONE ? "recorded messages" : gem.engine ? "ready" : gem.step === "load" ? "loading" : gem.step === "download" || gem.step === "check" ? "downloading" : "not loaded";
   slot.innerHTML = browserDrafts() ? `<button class="gem-chip ${gem.engine ? "on" : ""}" onclick="openGem()" aria-label="Gemma: ${word}">
     <i aria-hidden="true"></i><span>Gemma<em>: ${word}</em></span></button>` : "";
 }
 
 function draftHere(id) {   // one model job at a time; the page stays usable meanwhile
+  if (PHONE) return act(id, "draft", {by: "recorded"});   // nothing to download or load on a phone
   if (!gem.engine) return openGem(id);
   busy[id] = "draft"; delete errors[id]; render();
   gemQueue = gemQueue.then(async () => {

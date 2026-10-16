@@ -22,7 +22,7 @@ class Desk(TypedDict, total=False):
     draft: str
     problems: list[str]
     attempts: int
-    offered: str | None  # a draft written elsewhere (the owner's browser), handed in with Draft
+    offered: str | None  # a draft written elsewhere (the browser), handed in with Draft
     by: str              # who wrote the draft: "desk" (Ollama here) | "browser" | "recorded"
     final: str
     sent: dict           # what the sender reported: channel, address, time

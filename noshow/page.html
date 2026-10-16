@@ -322,6 +322,7 @@ async function load() {
   data = await r.json();
   if (open === null && data.guests.length && wide()) open = firstOpen()?.id ?? null;   // phones start with the whole list
   render();
+  bootGem();
 }
 
 function advance() {   // after a decision, unfold the next guest who still needs one
@@ -366,7 +367,7 @@ async function runMorning(btn) {
   $("#morning-err").textContent = "The check didn't finish. Risk is scored online, so check the internet connection and try again.";
 }
 
-function toggle(id) {   // unfold in place: classes only, so the pass animates and the owner's edits stay put
+function toggle(id) {   
   const prev = open;
   open = open === id ? null : id;
   for (const x of new Set([prev, open])) {
@@ -546,8 +547,14 @@ const GB = (n) => (n / 1e9).toFixed(1) + " GB", MB = (n) => Math.round(n / 1e6).
 async function savedModel() {   // the copy kept by an earlier visit, if it's whole
   try {
     const f = await (await (await navigator.storage.getDirectory()).getFileHandle(GEM.file)).getFile();
+    gem.partial = f.size && f.size !== GEM.bytes ? f.size : 0;   // an unfinished download, replaced by the next one
     return f.size === GEM.bytes ? f : null;
   } catch { return null; }
+}
+async function bootGem() {   // a copy kept by an earlier visit loads by itself: the visitor already said yes to it once
+  if (!browserDrafts() || !navigator.gpu || gem.engine || gem.step !== "ask") return;
+  gem.saved = await savedModel();
+  if (gem.saved) { gem.kept = true; startGem(); }
 }
 async function roomToKeep() {
   try { const {quota, usage} = await navigator.storage.estimate(); return quota - usage > GEM.bytes * 1.05; } catch { return false; }
@@ -590,6 +597,7 @@ async function startGem() {
     gem.engine = await Engine.create({model});
     // Streaming: the size was checked from the server's header above; the engine can finish before reading the last bytes.
     gem.secs = (performance.now() - gem.t0) / 1000; gem.step = "ready"; gem.stored = !!(gem.saved || gem.kept);
+    if (gem.kept) navigator.storage.persist?.().catch(() => {});   // ask the browser not to clear it when space runs low
     paintGem(); renderGemChip();
     const id = gem.for; gem.for = null;
     if (id) { setTimeout(() => $("#gem").close(), 900); draftHere(id); }
@@ -619,13 +627,14 @@ async function forgetGem() {
 }
 
 function paintGem() {
+  renderGemChip();
   const s = gem.step, order = ["download", "check", "load", "ready"];
   const at = (k) => s === "failed" ? "" : order.indexOf(s) > order.indexOf(k) || s === "ready" ? "done" : s === k ? "now" : "";
   const dot = (k) => `<span class="dot">${at(k) === "done" ? svg('<path d="M20 6 9 17l-5-5"/>', 12) : ""}</span>`;
   const first = gem.saved ? `<b>Found on this computer</b><small>Kept from an earlier visit: ${GB(GEM.bytes)}, no download.</small>`
     : `<b>Download ${GB(GEM.bytes)}</b><small id="gem-bytes">${s === "download" ? "Starting…" : "Once. A few minutes on a fast connection."}</small>
        ${s === "download" ? `<div class="meter" id="gem-meter"><i></i></div>` : ""}`;
-  const where = gem.kept ? "In this browser's private storage for this page, so the next visit skips the download. Remove it any time from here."
+  const where = gem.kept ? `In this browser's private storage for this page, so the next visit loads it by itself, with no download. Remove it any time from here.${gem.partial ? ` An unfinished copy from an earlier visit (${gem.partial >= 1e9 ? GB(gem.partial) : MB(gem.partial)}) will be replaced.` : ""}`
     : "This browser has no room to keep it, so it is downloaded again on each visit.";
   let body;
   if (s === "nogpu") body = `<h2 id="gem-title">This browser can't run Gemma</h2>
@@ -654,7 +663,7 @@ function paintGem() {
       : s === "download" ? `<button class="btn quiet" onclick="gem.abort.abort()">Cancel</button>`
       : s === "ready" ? `<button class="btn" onclick="closeGem()">Done</button>${gem.stored ? `<button class="btn quiet" onclick="forgetGem()">Remove it from this computer</button>` : ""}`
       : ""}</div>
-    ${s === "ask" && gem.for ? `<p class="fine">The recorded message was written by the same model on the owner's Mac, and is checked again here.</p>` : ""}`;
+    ${s === "ask" && gem.for ? `<p class="fine">The recorded message was written by the same model on the my Mac, and is checked again here.</p>` : ""}`;
   $("#gem").innerHTML = `<div class="dlg">${body}</div>`;
   if (s === "download") paintMeter();
 }
@@ -662,8 +671,9 @@ function paintGem() {
 function renderGemChip() {
   const slot = $("#gem-slot");
   if (!slot) return;
-  slot.innerHTML = browserDrafts() ? `<button class="gem-chip ${gem.engine ? "on" : ""}" onclick="openGem()" aria-label="Gemma: ${gem.engine ? "ready" : "not loaded"}">
-    <i aria-hidden="true"></i><span>Gemma<em>${gem.engine ? ": ready" : ": not loaded"}</em></span></button>` : "";
+  const word = gem.engine ? "ready" : gem.step === "load" ? "loading" : gem.step === "download" || gem.step === "check" ? "downloading" : "not loaded";
+  slot.innerHTML = browserDrafts() ? `<button class="gem-chip ${gem.engine ? "on" : ""}" onclick="openGem()" aria-label="Gemma: ${word}">
+    <i aria-hidden="true"></i><span>Gemma<em>: ${word}</em></span></button>` : "";
 }
 
 function draftHere(id) {   // one model job at a time; the page stays usable meanwhile

@@ -1,4 +1,4 @@
-"""The hosted demo's data, saved once on the owner's Mac so the host needs no dataset, no TabPFN key and no
+"""The hosted demo's data, saved once on the Mac so the host needs no dataset, no TabPFN key and no
 Ollama: the demo morning as TabPFN scored it, both replay years, the line's 30-morning numbers, and one recorded
 draft per flagged guest (Gemma 4 E2B through Ollama, checked like the desk checks, read by hand).
 

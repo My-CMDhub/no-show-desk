@@ -51,7 +51,13 @@ NAMES = ["Ana Silva", "Ben Carter", "Chloe Nguyen", "Daniel Okafor", "Elena Ross
          "Victor Hugo Ruiz", "Wren Clarke", "Ximena Soto", "Yusuf Demir", "Zara Hale"]
 FICTION_NUMBERS = ["006", "156", "157", "158", "159", "110", "313", "737", "808"]   # ACMA: 0491 570 xxx is for fiction
 ACTION_STAGE = {"draft": "choose", "leave": "choose", "send": "review", "reject": "review"}
-_LOCKS: dict[str, threading.Lock] = {}   # one per guest: two taps, tabs or phones can't both act on one run
+# Two taps, tabs or phones can't both act on one guest's run. A fixed set, so junk ids can't grow it.
+_LOCKS = [threading.Lock() for _ in range(64)]
+MAX_VISITORS = 300   # hosted: about 220 KB of database per visitor's desk, so ~70 MB at most
+
+
+class DeskFull(Exception):
+    """Hosted: no room for another visitor's copy of the demo morning until the host restarts."""
 
 
 class NeedsOwner(Exception):
@@ -97,9 +103,13 @@ def tid(visitor: str, booking_id: str) -> str:
 def morning(today: str, desk=None, seed: int = SEED, visitor: str = "") -> list[dict]:
     """Score the next few days' arrivals and start one graph run per booking. Runs once per day."""
     desk = desk or app()
-    if guests(today, desk, visitor):
-        return guests(today, desk, visitor)
+    if found := guests(today, desk, visitor):
+        return found
     if HOSTED:   # the demo morning as scored on the owner's Mac (same bookings, same scores)
+        (n,) = desk.checkpointer.conn.execute(
+            "SELECT COUNT(DISTINCT substr(thread_id, 1, instr(thread_id, '~'))) FROM checkpoints WHERE instr(thread_id, '~') > 0").fetchone()
+        if n >= MAX_VISITORS:   # ponytail: a cap, not cleanup; old copies go when the free host restarts
+            raise DeskFull()
         for st in snapshot()["morning"]:
             b = {**st["booking"], "today": date.fromisoformat(st["booking"]["today"]),
                  "arrival": date.fromisoformat(st["booking"]["arrival"])}
@@ -172,8 +182,12 @@ def act(thread: str, action: str, text: str | None = None, desk=None, anyway: bo
     the owner's own wording the same way the model's draft was checked. Draft can bring its own text, written
     in the owner's browser (by="browser") or the one recorded earlier on the owner's Mac (by="recorded")."""
     desk = desk or app()
-    with _LOCKS.setdefault(thread, threading.Lock()):
+    with _LOCKS[hash(thread) % len(_LOCKS)]:
         g = guest(thread, desk)
+        cfg = {"configurable": {"thread_id": thread}}
+        if action == "draft" and g["stage"] is None and not by and desk.get_state(cfg).next:
+            desk.invoke(None, cfg)   # a draft that stopped half-way (the model failed): carry on from where it stopped
+            return guest(thread, desk)
         if ACTION_STAGE.get(action) is None or g["stage"] != ACTION_STAGE[action]:
             raise ValueError(f"{thread} is not waiting for {action!r}")
         if action == "send" and text is not None:
@@ -191,7 +205,7 @@ def act(thread: str, action: str, text: str | None = None, desk=None, anyway: bo
             answer = {"decision": "draft", "text": rec["text"], "by": "recorded"}
         elif action == "draft" and text:
             answer = {"decision": "draft", "text": text.strip(), "by": "browser"}
-        desk.invoke(Command(resume=answer), {"configurable": {"thread_id": thread}})
+        desk.invoke(Command(resume=answer), cfg)
         return guest(thread, desk)
 
 

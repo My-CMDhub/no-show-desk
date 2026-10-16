@@ -178,3 +178,35 @@ def test_the_snapshot_matches_what_the_desk_works_out_live():
     assert snap["roi"] == desk.live_roi()
     assert snap["replay"]["2017"] == desk.live_replay("2017") and snap["replay"]["2016"] == desk.live_replay("2016")
     assert sum(s["flagged"] for s in snap["morning"]) == 7 and len(snap["recorded"]) == 7
+
+
+def test_hosted_refuses_odd_cookies_blank_drafts_and_the_morning_button(hosted):
+    c = hosted()
+    c.cookies.set("desk", "a" * 4000)
+    day = c.get("/api/day").json()
+    assert len(day["guests"][0]["id"].split("~")[0]) == 16   # a fresh id, not the long one sent
+    ana = next(g["id"] for g in day["guests"] if g["booking"]["guest"] == "Ana Silva")
+    assert c.post(f"/api/guests/{ana}/draft", json={"text": "   "}).status_code == 422
+    assert c.post(f"/api/guests/{ana}/draft", json={"by": "recorded"}).json()["stage"] == "review"   # still usable
+    assert c.post("/api/morning").status_code == 404
+
+
+def test_hosted_stops_making_desks_past_the_cap(hosted, monkeypatch):
+    monkeypatch.setattr(desk, "MAX_VISITORS", 2)
+    assert hosted().get("/api/day").status_code == 200 and hosted().get("/api/day").status_code == 200
+    assert hosted().get("/api/day").status_code == 503
+
+
+def test_a_draft_that_failed_half_way_can_be_tried_again(tmp_path):
+    tries = []
+    def flaky(brief):
+        tries.append(brief)
+        if len(tries) == 1:
+            raise ConnectionError("Ollama isn't running")
+        return GOOD
+    graph = desk.app(tmp_path / "desk.sqlite", writer=flaky, sender=lambda b, t: {})
+    graph.invoke({"booking": {**booking(1, "Ana Silva"), "due": True}, "risk": 0.6, "flagged": True, "reasons": []},
+                 {"configurable": {"thread_id": f"{desk.DAY}-1"}})
+    with pytest.raises(ConnectionError):
+        desk.act(f"{desk.DAY}-1", "draft", desk=graph)
+    assert desk.act(f"{desk.DAY}-1", "draft", desk=graph)["stage"] == "review"

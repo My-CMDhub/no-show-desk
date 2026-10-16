@@ -612,6 +612,7 @@ function paintMeter() {
   $("#gem-bytes").textContent = `${MB(gem.got)} of ${GB(GEM.bytes)}` + (secs > 2 ? `, ${MB(rate)}/s, about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.ceil(left) + " s"} left` : "");
 }
 async function forgetGem() {
+  try { await gem.engine?.delete(); } catch {}   // frees the ~2 GB it holds on the graphics chip
   try { await (await navigator.storage.getDirectory()).removeEntry(GEM.file); } catch {}
   gem = {...gem, step: "ask", saved: null, stored: false, engine: null};
   await openGem(); renderGemChip();
@@ -630,7 +631,7 @@ function paintGem() {
   if (s === "nogpu") body = `<h2 id="gem-title">This browser can't run Gemma</h2>
     <p>Writing messages here needs WebGPU, which Chrome, Edge and Safari 26 have on a computer. Phones and some browsers don't.
       You can still see the message Gemma wrote for this guest earlier, on the owner's Mac. It is checked again here like any draft.</p>
-    <div class="act">${gem.for ? `<button class="btn" onclick="useRecorded()">Use the recorded message</button>` : ""}<button class="btn quiet" onclick="$('#gem').close()">Close</button></div>`;
+    <div class="act">${gem.for ? `<button class="btn" onclick="useRecorded()">Use the recorded message</button>` : ""}<button class="btn quiet" onclick="closeGem()">Close</button></div>`;
   else body = `<h2 id="gem-title">${s === "ready" ? "Gemma is ready on this computer" : "Write messages with Gemma, on this computer"}</h2>
     <p>Messages are written by Google's Gemma 4 E2B, a small open model. This page downloads it and runs it on your computer's graphics chip. Nothing is installed.</p>
     <dl class="facts">
@@ -649,9 +650,9 @@ function paintGem() {
     ${gem.error ? `<p class="err" role="alert">That didn't work: ${esc(gem.error)}. You can try again, or use the recorded message.</p>` : ""}
     <div class="act">${
       s === "ask" || s === "failed" ? `<button class="btn" onclick="startGem()">${gem.saved ? "Load Gemma" : `Download and load (${GB(GEM.bytes)})`}</button>
-        ${gem.for ? `<button class="btn quiet" onclick="useRecorded()">Use the recorded message</button>` : `<button class="btn quiet" onclick="$('#gem').close()">Not now</button>`}`
+        ${gem.for ? `<button class="btn quiet" onclick="useRecorded()">Use the recorded message</button>` : `<button class="btn quiet" onclick="closeGem()">Not now</button>`}`
       : s === "download" ? `<button class="btn quiet" onclick="gem.abort.abort()">Cancel</button>`
-      : s === "ready" ? `<button class="btn" onclick="$('#gem').close()">Done</button>${gem.stored ? `<button class="btn quiet" onclick="forgetGem()">Remove it from this computer</button>` : ""}`
+      : s === "ready" ? `<button class="btn" onclick="closeGem()">Done</button>${gem.stored ? `<button class="btn quiet" onclick="forgetGem()">Remove it from this computer</button>` : ""}`
       : ""}</div>
     ${s === "ask" && gem.for ? `<p class="fine">The recorded message was written by the same model on the owner's Mac, and is checked again here.</p>` : ""}`;
   $("#gem").innerHTML = `<div class="dlg">${body}</div>`;
@@ -678,10 +679,14 @@ function draftHere(id) {   // one model job at a time; the page stays usable mea
       wrote[id] = (performance.now() - t) / 1000;
       const text = reply.content.filter((c) => c.type === "text").map((c) => c.text).join("").trim();
       delete busy[id];
+      if (!text) { errors[id] = "Gemma returned an empty message. Try again, or use the recorded message."; return render(); }
       await act(id, "draft", {text});
     } catch (e) { delete busy[id]; errors[id] = "Gemma couldn't write this one. Try again, or use the recorded message."; render(); }
   });
 }
+function dropGem() { if (gem.step === "download") gem.abort?.abort(); gem.for = null; }   // stop a download, forget the waiting guest
+function closeGem() { dropGem(); $("#gem").close(); }
+$("#gem").addEventListener("cancel", dropGem);   // Esc
 function useRecorded() { const id = gem.for; gem.for = null; $("#gem").close(); if (id) act(id, "draft", {by: "recorded"}); }
 
 // Replay: the stored test mornings. Scores were made before each morning; outcomes stay hidden until Reveal.

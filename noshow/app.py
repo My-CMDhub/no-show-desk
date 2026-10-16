@@ -4,6 +4,7 @@ Run: .venv/bin/python -m noshow.app   then open http://localhost:8000
 The page has no login, so it listens on this computer only.
 """
 import os
+import re
 import secrets
 import threading
 from contextlib import asynccontextmanager, nullcontext
@@ -46,7 +47,7 @@ def visitor(request: Request, response: Response) -> str:
     if not desk.HOSTED:
         return ""
     v = request.cookies.get("desk")
-    if not v or not v.isalnum():
+    if not v or not re.fullmatch(r"[0-9a-f]{16}", v):   # only ids this server could have made
         v = secrets.token_hex(8)
         https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"   # hosts end TLS at a proxy
         response.set_cookie("desk", v, max_age=7 * 86400, httponly=True, samesite="lax", secure=https)
@@ -68,7 +69,10 @@ def page():
 @api.get("/api/day")
 def day(request: Request, response: Response):
     v, graph = visitor(request, response), request.app.state.desk
-    guests = desk.morning(desk.DAY, graph, visitor=v) if desk.HOSTED else desk.guests(desk.DAY, graph)
+    try:
+        guests = desk.morning(desk.DAY, graph, visitor=v) if desk.HOSTED else desk.guests(desk.DAY, graph)
+    except desk.DeskFull:
+        raise HTTPException(503, "The demo is full right now. Please try again later.")
     return {"day": desk.DAY, "line": desk.FLAG_LINE, "days_ahead": desk.DAYS_AHEAD, "roi": desk.roi(),
             "at_risk": desk.at_risk(guests), "shared": desk.shared_reasons(guests), "guests": guests,
             "hosted": desk.HOSTED, "drafts": "browser" if desk.HOSTED or os.getenv("DRAFTS") == "browser" else "ollama"}
@@ -100,6 +104,8 @@ def replay(year: str):
 
 @api.post("/api/morning")
 def morning(request: Request, response: Response):
+    if desk.HOSTED:   # the hosted morning is made per visitor by /api/day
+        raise HTTPException(404, "Not on the hosted demo")
     desk.morning(desk.DAY, request.app.state.desk)
     return day(request, response)
 
@@ -108,6 +114,8 @@ def morning(request: Request, response: Response):
 def act(thread: str, action: str, request: Request, response: Response, edit: Edit | None = None):
     thread = mine(thread, request, response)
     text = edit.text if edit else None
+    if action == "draft" and text is not None and not text.strip():
+        raise HTTPException(422, {"problems": ["the message is empty"]})
     if desk.HOSTED and action == "draft" and not (text or (edit and edit.by)):
         raise HTTPException(409, "The hosted desk drafts in your browser")   # no model on the host
     try:

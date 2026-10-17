@@ -31,7 +31,7 @@ A small motel loses a night's income every time a guest silently doesn't arrive.
 1. **08:00, a Telegram message.** *"7 guests arriving in the next 3 days might not show: $1,599.20 of bookings. Start with Chloe Nguyen (74%), Daniel Okafor (67%) and Ana Silva (61%), plus 4 more."*
 2. **One page, guests ranked by risk.** Each row opens into the booking and the reasons, worked out from the motel's own past bookings: *"Room only, no meals. 34% of past room-only bookings cancelled, against 26% of all past bookings without a deposit."*
 3. **Draft or Leave.** Draft writes a short message on this computer. Leave means no message.
-4. **Send or Reject.** Every date and amount in the draft has already been checked against the booking. The owner's own edits are checked again before anything goes, and Leave or Reject can be undone for a few seconds.
+4. **Send or Reject.** Every date and amount in the draft has already been checked against the booking. The owner's own edits are checked as they type, and again before anything goes, and Leave or Reject can be undone for a few seconds.
 5. **Bookings.** The next two weeks of arrivals, searchable, with where each one stands.
 6. **Replay.** Any of 30 real past mornings, scored before the day, then *Reveal what happened*: who really cancelled, who was caught, who was missed. A slider moves the line, and *Replay all 30 mornings* adds it up against random picks.
 
@@ -102,7 +102,7 @@ cp .env.example .env                   # add a TabPFN key; Telegram is optional
 Put `hotels.csv` from the [Hotel booking demand](https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand) dataset at `data/raw/hotels.csv`, then:
 
 ```bash
-.venv/bin/python -m pytest -q          # 58 tests
+.venv/bin/python -m pytest -q          # 61 tests
 .venv/bin/python -m noshow.app         # http://localhost:8000, plus the Telegram bot and the 08:00 summary
 ```
 
@@ -157,7 +157,7 @@ The TabPFN scripts need the API key; the draft script needs Ollama.
 
 ```
 noshow/        the app: risk, reasons, facts, drafting, checker, graph, page, Telegram bot
-tests/         58 tests for the logic (facts, checker, the two pauses, edits, double sends)
+tests/         61 tests for the logic (facts, checker, the two pauses, edits checked live, double sends)
 scripts/       the measurements behind every number
 results/       their output, including every stored draft
 spike/         Gemma 4 in the browser (LiteRT-LM on WebGPU)

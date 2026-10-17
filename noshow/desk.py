@@ -177,6 +177,16 @@ def brief(thread: str, desk=None) -> dict:
     return {"system": SYSTEM, "brief": facts_brief(g["facts"]), "recorded": rec}
 
 
+def check_edit(thread: str, text: str, desk=None) -> list[str]:
+    """The problems in the owner's edited wording, worked out exactly as Send will, while they type. Read-only: the run
+    doesn't move, and Send still checks again before anything goes."""
+    g = guest(thread, desk or app())
+    if g["stage"] != ACTION_STAGE["send"]:
+        raise ValueError(f"{thread} has no draft waiting to be checked")
+    text = text.strip()
+    return check_draft(text, g["facts"]) if text else ["the message is empty"]
+
+
 def act(thread: str, action: str, text: str | None = None, desk=None, anyway: bool = False, by: str | None = None) -> dict:
     """Resume a paused run with the owner's choice. Refuses a choice the run isn't waiting for, and checks
     the owner's own wording the same way the model's draft was checked. Draft can bring its own text, written

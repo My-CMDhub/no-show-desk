@@ -210,3 +210,25 @@ def test_a_draft_that_failed_half_way_can_be_tried_again(tmp_path):
     with pytest.raises(ConnectionError):
         desk.act(f"{desk.DAY}-1", "draft", desk=graph)
     assert desk.act(f"{desk.DAY}-1", "draft", desk=graph)["stage"] == "review"
+
+
+def test_checking_an_edit_reports_a_wrong_fact_and_sends_nothing(client):
+    url = drafted(client).replace("/send", "/check")
+    r = client.post(url, json={"text": "Hi Ana, see you 25 December. Total $1."})
+    assert r.status_code == 200 and "amount $1 is not the total $286.50" in r.json()["problems"]
+    assert client.sent == [] and client.get("/api/day").json()["guests"][1]["stage"] == "review"   # nothing moved
+    assert client.post(url, json={"text": GOOD}).json()["problems"] == []
+    assert client.post(url, json={"text": "  "}).json()["problems"] == ["the message is empty"]
+
+
+def test_an_edit_can_only_be_checked_while_its_draft_waits_for_send(client):
+    assert client.post(f"/api/guests/{desk.DAY}-1/check", json={"text": GOOD}).status_code == 409   # no draft yet
+
+
+def test_hosted_visitors_cannot_check_each_others_drafts(hosted):
+    a, b = hosted(), hosted()
+    chloe = next(g for g in a.get("/api/day").json()["guests"] if g["booking"]["guest"] == "Chloe Nguyen")["id"]
+    a.post(f"/api/guests/{chloe}/draft", json={"text": "ignored", "by": "recorded"})
+    assert a.post(f"/api/guests/{chloe}/check", json={"text": "Total $1."}).json()["problems"]
+    b.get("/api/day")
+    assert b.post(f"/api/guests/{chloe}/check", json={"text": "Total $1."}).status_code == 404   # not b's guest

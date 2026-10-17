@@ -111,6 +111,14 @@ def morning(request: Request, response: Response):
     return day(request, response)
 
 
+@api.post("/api/guests/{thread}/check")   # declared before /{action}: checking is not an action, it changes nothing
+def check(thread: str, edit: Edit, request: Request, response: Response):
+    try:
+        return {"problems": desk.check_edit(mine(thread, request, response), edit.text or "", request.app.state.desk)}
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+
 @api.post("/api/guests/{thread}/{action}")
 def act(thread: str, action: str, request: Request, response: Response, edit: Edit | None = None):
     thread = mine(thread, request, response)

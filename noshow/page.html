@@ -409,7 +409,23 @@ function tab(t) { if (t !== ui.tab) open = t === "today" && wide() ? firstOpen()
 function filter(f) { ui.filter = f; ui.page = 0; keep(); render(); }
 function page(d) { ui.page += d; keep(); renderBoard(); }
 function search(q) { ui.query = q; ui.page = 0; keep(); renderBoard(); }
-function edited(id, el) { edits[id] = el.value; delete needYes[id]; fit(); }
+const checks = {};   // per guest: the pause timer and the number of the latest check, so an older answer never wins
+function edited(id, el) {   // the owner's wording is checked as Send will check it, once they pause typing
+  edits[id] = el.value; fit();
+  const c = checks[id] ??= {n: 0};
+  clearTimeout(c.t);
+  c.t = setTimeout(async () => {
+    const n = ++c.n;
+    try {
+      const r = await fetch(`/api/guests/${encodeURIComponent(id)}/check`,
+                            {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({text: el.value})});
+      if (!r.ok || n !== c.n) return;   // the draft moved on, or a newer check is coming: Send still checks
+      const {problems} = await r.json();
+      if (problems.length) needYes[id] = problems; else delete needYes[id];
+      paintCheck(id);
+    } catch {}
+  }, 400);
+}
 function fit() { document.querySelectorAll("textarea").forEach((t) => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 
 function lede() {
@@ -469,8 +485,28 @@ function details(g) {
   return `<details class="more"><summary>Booking details ${ICON.chev}</summary><ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul></details>`;
 }
 
+// The verdict line and the Send button of a draft: rebuilt on their own while the owner types, so the textarea
+// (and the caret in it) is never replaced.
+function verdict(g) {
+  const yes = needYes[g.id];
+  return yes ? `<p class="verdict warn" id="v-${g.id}">${ICON.alert}<span>Your edit: ${yes.map(esc).join("; ")}.</span></p>`
+    : g.problems.length ? `<p class="verdict warn" id="v-${g.id}">${ICON.alert}<span>Check before sending: ${g.problems.map(esc).join("; ")}.</span></p>`
+    : `<p class="verdict ok" id="v-${g.id}">${ICON.check}<span>Dates, nights and total match the booking.</span></p>`;
+}
+function sendButton(g) {
+  const how = g.booking.contact.channel === "email" ? "email" : "WhatsApp", off = busy[g.id] ? "disabled" : "";
+  return needYes[g.id] ? `<button class="btn" id="s-${g.id}" ${off} onclick="act('${g.id}','send',{anyway:true})">${ICON.send} Send anyway</button>`
+    : `<button class="btn" id="s-${g.id}" ${off} onclick="act('${g.id}','send')">${ICON.send} Send by ${how}</button>`;
+}
+function paintCheck(id) {
+  const g = data.guests.find((x) => x.id === id), v = document.getElementById(`v-${id}`), s = document.getElementById(`s-${id}`);
+  if (!g || g.stage !== "review" || !v || !s) return;
+  v.outerHTML = verdict(g);
+  s.outerHTML = sendButton(g);
+}
+
 function action(g) {
-  const b = g.booking, how = b.contact.channel === "email" ? "email" : "WhatsApp", off = busy[g.id] ? "disabled" : "";
+  const b = g.booking, off = busy[g.id] ? "disabled" : "";
   if (pending[g.id]) return `<div class="act"><p class="note">${pending[g.id].action === "leave" ? "Left alone: no message." : "Draft rejected: nothing sent."}</p>
     <button class="btn quiet" onclick="undo('${g.id}')">Undo</button></div>`;
   if (busy[g.id] === "draft") return `<h3>Writing the message</h3><div class="bar ${browserDrafts() ? "quick" : ""}" role="progressbar" aria-label="Writing"><i></i></div>
@@ -480,12 +516,7 @@ function action(g) {
   if (g.outcome === "left") return `<p class="note">Left alone: no message needed.</p>`;
   if (g.outcome === "rejected") return `<p class="note">Draft rejected. Nothing was sent.</p>`;
   if (g.stage === "review") {
-    const yes = needYes[g.id];
-    const v = yes ? `<p class="verdict warn">${ICON.alert}<span>Your edit: ${yes.map(esc).join("; ")}.</span></p>`
-      : g.problems.length ? `<p class="verdict warn">${ICON.alert}<span>Check before sending: ${g.problems.map(esc).join("; ")}.</span></p>`
-      : `<p class="verdict ok">${ICON.check}<span>Dates, nights and total match the booking.</span></p>`;
-    const send = yes ? `<button class="btn" ${off} onclick="act('${g.id}','send',{anyway:true})">${ICON.send} Send anyway</button>`
-      : `<button class="btn" ${off} onclick="act('${g.id}','send')">${ICON.send} Send by ${how}</button>`;
+    const v = verdict(g), send = sendButton(g);
     const by = g.by === "browser" ? `Written by Gemma in this browser${wrote[g.id] ? ` in ${wrote[g.id].toFixed(1)} s` : ""}.`
       : g.by === "recorded" ? "Written earlier by the same Gemma, and checked again here." : "";
     return `<h3><label for="t-${g.id}">Message to ${esc(b.guest.split(" ")[0])}</label></h3>

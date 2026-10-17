@@ -81,6 +81,7 @@ On real past bookings, with the outcome hidden until scoring. Every number comes
 | Of guests flagged at 30% or more, how many really cancelled? | **53%**, against 29% of all guests | 210 flags over 30 mornings | [thresholds.md](results/thresholds.md) |
 | How many of all cancellations did the flags catch? | **111 of 172**; picking the same number at random: 64 | 600 guests | [thresholds.md](results/thresholds.md) |
 | Ranking with a motel-sized history | TabPFN ahead of gradient boosting at 300, 1,000 and 3,000 past bookings (0.766 vs 0.702 ROC-AUC at 1,000) | 3 histories per size | [small_history.md](results/small_history.md) |
+| TabPFN v2 run locally (8 GB Mac), against the API | Same 111 of 172 on the 30 mornings, flagging 205 instead of 210; ROC-AUC 0.787 vs 0.792; about 23 s a morning | same 600 guests | [local_v2.md](results/local_v2.md) |
 | Against a plain logistic regression | TabPFN ahead in 9 of 9 small-history runs by 2–3 ROC-AUC points; on the 30 mornings, 111 caught against 106 at the same number of messages | same tests | [logistic.md](results/logistic.md) |
 | Wrong facts when the model works out dates itself | **13 of 100** drafts | 50 bookings × 2 | [drafts.md](results/drafts.md) |
 | Wrong facts when code hands it the facts | **0 of 100**, every draft also read by hand | 50 bookings × 2 | [drafts_reconfirm.md](results/drafts_reconfirm.md) |
@@ -168,7 +169,7 @@ docs/images/   screenshots
 - **Demo data.** Real bookings from two Portuguese hotels (2015–17), not a motel, so the desk lives on a fixed day: 1 Feb 2017, the earliest of the 30 test mornings with the average number of flags. Guest names and contacts are made up, and prices are shown in dollars.
 - **Gemma in the browser is for computers.** Phones and tablets get the message recorded earlier: an iPhone 15 Pro downloaded the 2 GB model, then Safari reloaded the page while loading it. Loading is heavy on computers too; on the 8 GB test Mac the browser stopped responding for a while after loading.
 - **The hosted demo replays saved scores.** It shows the demo morning exactly as TabPFN scored it on the owner's Mac; it doesn't score anything live.
-- **Scoring leaves the computer.** TabPFN runs through Prior Labs' API, so booking details (never names; the data has none) are sent for scoring under its free non-commercial licence. A paid version needs Prior Labs' commercial terms or TabPFN's open weights run locally. Gemma already runs locally.
+- **Scoring leaves the computer.** TabPFN runs through Prior Labs' API, so booking details (never names; the data has none) are sent for scoring under its free non-commercial licence. A paid version needs Prior Labs' commercial terms or TabPFN's v2 weights run locally, which their licence allows with attribution: on the same 30 mornings, v2 on an 8 GB Mac caught the same 111 of 172 at about 23 s a morning ([local_v2.md](results/local_v2.md)). Gemma already runs locally.
 - **Reasons explain the group, not the order.** Guests who share a profile show the same reasons; the order within them is TabPFN weighing everything together.
 - **The morning link opens on the desk computer.** The page listens on `localhost`.
 - **Sending is a mock.** Approved messages go to `data/outbox.jsonl`.

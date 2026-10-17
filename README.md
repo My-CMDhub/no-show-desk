@@ -1,8 +1,8 @@
 <div align="center">
 
-# No-Show Desk
+<img src="docs/logo/no-show-desk-lockup.png" alt="No-Show Desk" width="520">
 
-**Find out which guests won't turn up, days before they don't.**
+**Know who won't turn up, before they don't.**
 
 A morning assistant for small motels and B&Bs. It flags the guests most likely to cancel or not show,<br>
 says why in plain words, and drafts a short "are you still coming?" message for the owner to send.
@@ -29,13 +29,13 @@ A small motel loses a night's income every time a guest silently doesn't arrive.
 <td width="62%" valign="top">
 
 1. **08:00, a Telegram message.** *"7 guests arriving in the next 3 days might not show: $1,599.20 of bookings. Start with Chloe Nguyen (74%), Daniel Okafor (67%) and Ana Silva (61%), plus 4 more."*
-2. **One page, guests ranked by risk.** Each row opens into the booking and the reasons, worked out from the motel's own past bookings: *"Room only, no meals. 34% of past room-only bookings cancelled, against 26% of all past guests."*
+2. **One page, guests ranked by risk.** Each row opens into the booking and the reasons, worked out from the motel's own past bookings: *"Room only, no meals. 34% of past room-only bookings cancelled, against 26% of all past bookings without a deposit."*
 3. **Draft or Leave.** Draft writes a short message on this computer. Leave means no message.
 4. **Send or Reject.** Every date and amount in the draft has already been checked against the booking. The owner's own edits are checked again before anything goes, and Leave or Reject can be undone for a few seconds.
 5. **Bookings.** The next two weeks of arrivals, searchable, with where each one stands.
 6. **Replay.** Any of 30 real past mornings, scored before the day, then *Reveal what happened*: who really cancelled, who was caught, who was missed. A slider moves the line, and *Replay all 30 mornings* adds it up against random picks.
 
-Nothing is sent without the owner. In this demo nothing leaves the computer: Send is marked *demo: not delivered*.
+Nothing is sent without the owner, and in this demo nothing reaches a guest: Send is marked *demo: not delivered*. (Scoring does leave the computer: see Limits.)
 
 </td>
 <td width="38%" valign="top">
@@ -112,7 +112,7 @@ Put `hotels.csv` from the [Hotel booking demand](https://www.kaggle.com/datasets
 DRAFTS=browser .venv/bin/python -m noshow.app
 ```
 
-The first Draft opens a screen that says what will be downloaded and from where, then fetches Gemma 4 E2B's web build (2.0 GB, Apache 2.0) from Hugging Face with a live byte count, checks its exact size, keeps it in the browser's private storage (OPFS) and loads it onto the graphics chip with [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM). Later visits skip the download, and the same screen removes it. Browsers without WebGPU get the message recorded earlier on the owner's Mac, checked again like any draft.
+The first Draft opens a screen that says what will be downloaded and from where, then fetches Gemma 4 E2B's web build (2.0 GB, Apache 2.0) from Hugging Face with a live byte count, checks its exact size, keeps it in the browser's private storage (OPFS) and loads it onto the graphics chip with [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM). When the browser keeps that copy, later visits load it instead of downloading again, and the same screen removes it. Browsers without WebGPU get the message recorded earlier on the owner's Mac, checked again like any draft.
 </details>
 
 <details>

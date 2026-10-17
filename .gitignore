@@ -13,3 +13,4 @@ results/.*.log
 PRODUCT.md
 DESIGN.md
 .venv-tabpfn/
+results/drafts_browser_spike.*

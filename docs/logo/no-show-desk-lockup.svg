@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 504 80" width="1008" height="160" role="img" aria-label="No-Show Desk">
+  <!-- Mark + wordmark. The wordmark uses Overpass ExtraBold (SIL OFL); a hinge slit runs through it like a split-flap row. -->
+  <defs><clipPath id="nsd-lockup-tile"><rect x="6" y="11" width="52" height="58" rx="9"/></clipPath></defs>
+  <g clip-path="url(#nsd-lockup-tile)"><rect x="6" y="11" width="52" height="29" fill="#30383C"/><rect x="6" y="40" width="52" height="29" fill="#1F2427"/></g>
+  <g fill="#F2B705" transform="translate(0 8)">
+    <path d="M32 9.5a8.5 8.5 0 1 1 0 17a8.5 8.5 0 1 1 0-17zm0 5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z" fill-rule="evenodd"/>
+    <rect x="29.5" y="24" width="5" height="29" rx="1.5"/><rect x="33" y="42" width="8" height="4.2" rx="1.2"/><rect x="33" y="48.3" width="6" height="4.2" rx="1.2"/>
+  </g>
+  <rect x="6" y="39" width="52" height="2.2" fill="#0A0C0D"/>
+  <text x="80" y="58" font-family="Overpass, 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="50" letter-spacing="-1" fill="#ECEFEC">NO-SHOW DESK</text>
+  <rect x="80" y="38.4" width="391.8" height="2" fill="#0F1214"/>
+  <rect x="477.8" y="38" width="20" height="20" rx="3" fill="#F2B705"/><rect x="477.8" y="47.2" width="20" height="1.6" fill="#0A0C0D"/>
+</svg>

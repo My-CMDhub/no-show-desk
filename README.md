@@ -102,8 +102,8 @@ cp .env.example .env                   # add a TabPFN key; Telegram is optional
 Put `hotels.csv` from the [Hotel booking demand](https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand) dataset at `data/raw/hotels.csv`, then:
 
 ```bash
-.venv/bin/python -m pytest -q          # 61 tests
-.venv/bin/python -m noshow.app         # http://localhost:8000, plus the Telegram bot and the 08:00 summary
+.venv/bin/python -m pytest -q          # 62 tests
+.venv/bin/python -m noshow.app         # http://localhost:8000 (the desk is at /desk), plus the Telegram bot and the 08:00 summary
 ```
 
 <details>
@@ -156,8 +156,8 @@ The TabPFN scripts need the API key; the draft script needs Ollama.
 ## Project layout
 
 ```
-noshow/        the app: risk, reasons, facts, drafting, checker, graph, page, Telegram bot
-tests/         61 tests for the logic (facts, checker, the two pauses, edits checked live, double sends)
+noshow/        the app: risk, reasons, facts, drafting, checker, graph, page, landing page, Telegram bot
+tests/         62 tests for the logic (facts, checker, the two pauses, edits checked live, double sends)
 scripts/       the measurements behind every number
 results/       their output, including every stored draft
 spike/         Gemma 4 in the browser (LiteRT-LM on WebGPU)

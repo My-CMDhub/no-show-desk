@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from noshow import bot, desk
 
 PAGE = Path(__file__).with_name("page.html")
+LANDING = PAGE.with_name("landing.html")   # in front of the desk: what it is, and the way in
 GEMMA = threading.Lock()   # one Gemma job at a time on an 8 GB Mac
 
 
@@ -63,6 +64,11 @@ def mine(thread: str, request: Request, response: Response) -> str:
 
 
 @api.get("/")
+def landing():
+    return FileResponse(LANDING, headers={"Cache-Control": "no-cache"})
+
+
+@api.get("/desk")
 def page():
     return FileResponse(PAGE, headers={"Cache-Control": "no-cache"})
 

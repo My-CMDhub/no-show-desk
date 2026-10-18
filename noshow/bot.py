@@ -57,7 +57,7 @@ def seconds_until(hhmm: str, now: datetime) -> float:
 
 async def todays_summary(app: Application) -> str:
     guests = await asyncio.to_thread(desk.morning, desk.DAY, app.bot_data["desk"])
-    return summary(guests, desk.FLAG_LINE, os.getenv("PAGE_URL", "http://localhost:8000"), desk.at_risk(guests)["total"])
+    return summary(guests, desk.FLAG_LINE, os.getenv("PAGE_URL", "http://localhost:8000/desk"), desk.at_risk(guests)["total"])
 
 
 async def hello(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

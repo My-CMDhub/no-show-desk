@@ -117,7 +117,15 @@ def test_a_reason_every_flagged_guest_shares_is_said_once():
 def test_the_page_font_ships_with_the_app(client):
     r = client.get("/fonts/overpass-latin.woff2")
     assert r.status_code == 200 and r.content[:4] == b"wOF2"
-    assert "fonts.googleapis.com" not in client.get("/").text
+    for path in ("/", "/desk"):
+        assert "fonts.googleapis.com" not in client.get(path).text
+
+
+def test_the_landing_page_sits_in_front_of_the_desk(client):
+    landing, page = client.get("/"), client.get("/desk")
+    assert landing.status_code == page.status_code == 200
+    assert 'href="/desk"' in landing.text and "Open the desk" in landing.text
+    assert 'id="board-slot"' in page.text and "Open the desk" not in page.text   # the desk itself, unchanged
 
 
 def test_replay_gives_back_the_stored_mornings_with_their_real_outcomes(client):

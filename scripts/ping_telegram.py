@@ -3,7 +3,7 @@ The text is exactly what the 08:00 message says (noshow/bot.py summary()), built
 (results/demo_snapshot.json), so it needs no TabPFN call and doesn't touch the desk's database.
 
 Run: .venv/bin/python scripts/ping_telegram.py            (sends in 20 s; start the phone recording first)
-     .venv/bin/python scripts/ping_telegram.py --in 5 --url https://no-show-desk.onrender.com
+     .venv/bin/python scripts/ping_telegram.py --in 5 --url https://no-show-desk.onrender.com/desk
      .venv/bin/python scripts/ping_telegram.py --dry      (prints the message, sends nothing)
 Needs TELEGRAM_BOT_TOKEN and TELEGRAM_OWNER_ID in .env; neither is ever printed.
 """
@@ -22,7 +22,7 @@ from noshow import bot, desk  # noqa: E402
 
 args = argparse.ArgumentParser()
 args.add_argument("--in", dest="wait", type=float, default=20, help="seconds to wait before sending")
-args.add_argument("--url", default="https://no-show-desk.onrender.com", help="the page link in the message")
+args.add_argument("--url", default="https://no-show-desk.onrender.com/desk", help="the page link in the message")
 args.add_argument("--dry", action="store_true", help="print the message instead of sending it")
 a = args.parse_args()
 
